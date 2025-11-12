@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "543139637391",
+    "project_id": "accountable-b7f3f",
+    "storage_bucket": "accountable-b7f3f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:543139637391:android:503aab9eddadb40567e8fa",
+        "android_client_info": {
+          "package_name": "com.example.accountable"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZc19Oayki7VanOhTDCiRV7jpM27oQQY8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

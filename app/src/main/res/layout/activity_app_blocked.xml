@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:gravity="center"
+    android:background="?attr/colorError">
+
+    <!-- Blocked Icon -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="🚫"
+        android:textSize="72sp"
+        android:layout_marginBottom="24dp" />
+
+    <!-- App Name -->
+    <TextView
+        android:id="@+id/blockedAppName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Instagram"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:textColor="@android:color/white"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Block Reason -->
+    <TextView
+        android:id="@+id/blockReason"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="You've reached your daily time limit for this app."
+        android:textSize="18sp"
+        android:textColor="@android:color/white"
+        android:textAlignment="center"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Usage Statistics -->
+    <TextView
+        android:id="@+id/usageStats"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Used: 15 minutes\nLimit: 15 minutes"
+        android:textSize="16sp"
+        android:textColor="@android:color/white"
+        android:textAlignment="center"
+        android:layout_marginBottom="32dp"
+        android:alpha="0.9" />
+
+    <!-- Action Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/requestAccessButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Request Partner Access"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:backgroundTint="@android:color/white"
+            android:textColor="?attr/colorError"
+            android:layout_marginBottom="12dp"
+            style="@style/Widget.MaterialComponents.Button" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/goHomeButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Go to Home Screen"
+            android:textSize="14sp"
+            android:backgroundTint="@android:color/transparent"
+            android:textColor="@android:color/white"
+            android:strokeColor="@android:color/white"
+            app:strokeWidth="2dp"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+    </LinearLayout>
+
+    <!-- Footer Info -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Your accountability partner will be notified of any access requests."
+        android:textSize="12sp"
+        android:textColor="@android:color/white"
+        android:textAlignment="center"
+        android:layout_marginTop="24dp"
+        android:alpha="0.8" />
+
+</LinearLayout>
