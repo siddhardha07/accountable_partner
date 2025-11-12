@@ -38,10 +38,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        
+
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
-        
+
         // Check if user is signed in
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser == null) {
@@ -51,21 +51,21 @@ public class MainActivity extends AppCompatActivity {
             finish();
             return;
         }
-        
+
         // Ensure user document exists with all required fields
         ensureUserDocumentExists(currentUser);
-        
+
         // Get and save FCM token
         getFCMToken();
-        
+
         // Setup notification channel and request permissions
         createNotificationChannel();
         requestNotificationPermission();
-        
+
         // Start listening for access requests
         setupAccessRequestListener();
         startListenerHealthCheck();
-        
+
         setContentView(R.layout.activity_main);
 
         Button myAppsBtn = findViewById(R.id.myAppsButton);
@@ -93,7 +93,7 @@ public class MainActivity extends AppCompatActivity {
             finish();
         });
     }
-    
+
     private void ensureUserDocumentExists(FirebaseUser user) {
         // Simplified and fast - just ensure document exists
         db.collection("users").document(user.getUid())
@@ -105,20 +105,20 @@ public class MainActivity extends AppCompatActivity {
                     // Skip heavy updates - keep it fast
                 });
     }
-    
+
     private void createUserDocument(FirebaseUser user) {
         Map<String, Object> userProfile = new HashMap<>();
         userProfile.put("email", user.getEmail());
-        userProfile.put("displayName", user.getDisplayName() != null ? user.getDisplayName() : 
+        userProfile.put("displayName", user.getDisplayName() != null ? user.getDisplayName() :
                        (user.getEmail() != null ? user.getEmail().split("@")[0] : "User"));
         userProfile.put("createdAt", System.currentTimeMillis());
         userProfile.put("mainPartnerId", null);
         userProfile.put("partners", new java.util.ArrayList<String>());
-        
+
         db.collection("users").document(user.getUid()).set(userProfile);
         // Removed toasts for speed - silent creation
     }
-    
+
     private void getFCMToken() {
         FirebaseMessaging.getInstance().getToken()
                 .addOnCompleteListener(task -> {
@@ -132,7 +132,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 });
     }
-    
+
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             CharSequence name = "Access Requests";
@@ -140,23 +140,23 @@ public class MainActivity extends AppCompatActivity {
             int importance = NotificationManager.IMPORTANCE_HIGH;
             NotificationChannel channel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, name, importance);
             channel.setDescription(description);
-            
+
             NotificationManager notificationManager = getSystemService(NotificationManager.class);
             notificationManager.createNotificationChannel(channel);
         }
     }
-    
+
     private void requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) 
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
                     != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, 
-                    new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 
+                ActivityCompat.requestPermissions(this,
+                    new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
                     NOTIFICATION_PERMISSION_REQUEST_CODE);
             }
         }
     }
-    
+
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -168,7 +168,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
-    
+
     private void startListenerHealthCheck() {
         listenerHealthHandler = new android.os.Handler();
         listenerHealthCheck = new Runnable() {
@@ -185,19 +185,19 @@ public class MainActivity extends AppCompatActivity {
         // Start the first check in 2 minutes
         listenerHealthHandler.postDelayed(listenerHealthCheck, 120000);
     }
-    
+
     private void stopListenerHealthCheck() {
         if (listenerHealthHandler != null && listenerHealthCheck != null) {
             listenerHealthHandler.removeCallbacks(listenerHealthCheck);
         }
     }
-    
+
     private void setupAccessRequestListener() {
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser == null) return;
-        
+
         String userId = currentUser.getUid();
-        
+
         // Get user's FCM token to match notifications
         db.collection("users").document(userId).get()
                 .addOnSuccessListener(userDoc -> {
@@ -210,7 +210,7 @@ public class MainActivity extends AppCompatActivity {
                                 .addSnapshotListener((snapshots, e) -> {
                                     if (e != null) {
                                         Log.w(TAG, "Notification listener failed: " + e.getMessage());
-                                        
+
                                         // Silent reconnect after delay
                                         new android.os.Handler().postDelayed(() -> {
                                             accessRequestListener = null;
@@ -218,7 +218,7 @@ public class MainActivity extends AppCompatActivity {
                                         }, 5000);
                                         return;
                                     }
-                                    
+
                                     if (snapshots != null) {
                                         for (DocumentChange dc : snapshots.getDocumentChanges()) {
                                             if (dc.getType() == DocumentChange.Type.ADDED) {
@@ -227,9 +227,9 @@ public class MainActivity extends AppCompatActivity {
                                                 String requesterName = document.getString("userName");
                                                 String appName = document.getString("appName");
                                                 String requestId = document.getString("requestId");
-                                                
+
                                                 showAccessRequestNotification(requestId, requesterName, appName);
-                                                
+
                                                 // Mark notification as delivered
                                                 document.getReference().update("status", "delivered");
                                             }
@@ -239,7 +239,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 });
     }
-    
+
     private void showAccessRequestNotification(String requestId, String requesterName, String appName) {
         // Create intent that opens PartnerApprovalActivity
         Intent intent = new Intent(this, PartnerApprovalActivity.class);
@@ -247,10 +247,10 @@ public class MainActivity extends AppCompatActivity {
         intent.putExtra("requesterName", requesterName);
         intent.putExtra("appName", appName);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, 
+
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        
+
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setContentTitle("Access Request")
@@ -260,13 +260,13 @@ public class MainActivity extends AppCompatActivity {
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true)
                 .setContentIntent(pendingIntent);
-        
+
         NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         notificationManager.notify((int) System.currentTimeMillis(), builder.build());
-        
+
         Log.d(TAG, "Notification shown for request: " + requestId);
     }
-    
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -274,7 +274,7 @@ public class MainActivity extends AppCompatActivity {
             setupAccessRequestListener();
         }
     }
-    
+
     @Override
     protected void onPause() {
         super.onPause();

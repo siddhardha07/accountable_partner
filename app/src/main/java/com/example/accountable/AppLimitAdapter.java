@@ -37,20 +37,20 @@ public class AppLimitAdapter extends RecyclerView.Adapter<AppLimitAdapter.ViewHo
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         PartnerControlActivity.AppLimitInfo app = apps.get(position);
-        
+
         holder.appNameText.setText(app.appName);
-        
+
         // Set up the editable limit field
         holder.limitEditText.setText(String.valueOf(app.dailyLimitMinutes));
-        
+
         // Set up text change listener for direct editing
         holder.limitEditText.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            
+
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {}
-            
+
             @Override
             public void afterTextChanged(Editable s) {
                 try {
@@ -69,7 +69,7 @@ public class AppLimitAdapter extends RecyclerView.Adapter<AppLimitAdapter.ViewHo
                 }
             }
         });
-        
+
         // Set up increase/decrease buttons
         holder.decreaseButton.setOnClickListener(v -> {
             if (app.dailyLimitMinutes > 0) { // Minimum 0 minutes (blocked)
@@ -77,28 +77,28 @@ public class AppLimitAdapter extends RecyclerView.Adapter<AppLimitAdapter.ViewHo
                 updateLimitDisplay(holder, app);
             }
         });
-        
+
         holder.increaseButton.setOnClickListener(v -> {
             if (app.dailyLimitMinutes < 480) { // Maximum 8 hours
                 app.dailyLimitMinutes += 5;
                 updateLimitDisplay(holder, app);
             }
         });
-        
+
         // Preset buttons
         holder.preset0Button.setOnClickListener(v -> setLimit(holder, app, 0));
         holder.preset15Button.setOnClickListener(v -> setLimit(holder, app, 15));
         holder.preset30Button.setOnClickListener(v -> setLimit(holder, app, 30));
         holder.preset60Button.setOnClickListener(v -> setLimit(holder, app, 60));
     }
-    
+
     private void updateLimitDisplay(ViewHolder holder, PartnerControlActivity.AppLimitInfo app) {
         holder.limitEditText.setText(String.valueOf(app.dailyLimitMinutes));
         if (limitChangeListener != null) {
             limitChangeListener.onLimitChanged(app, app.dailyLimitMinutes);
         }
     }
-    
+
     private void setLimit(ViewHolder holder, PartnerControlActivity.AppLimitInfo app, int minutes) {
         app.dailyLimitMinutes = minutes;
         holder.limitEditText.setText(String.valueOf(minutes));

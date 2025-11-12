@@ -57,15 +57,15 @@ public class MyAppsActivity extends AppCompatActivity {
     private void loadInstalledApps() {
         appList = new ArrayList<>();
         PackageManager pm = getPackageManager();
-        
+
         // Get only apps that can be launched (have launcher icons)
         Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
         mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
         List<ResolveInfo> packages = pm.queryIntentActivities(mainIntent, 0);
-        
+
         for (ResolveInfo resolveInfo : packages) {
             ApplicationInfo appInfo = resolveInfo.activityInfo.applicationInfo;
-            
+
             try {
                 String label = pm.getApplicationLabel(appInfo).toString();
                 Drawable icon = pm.getApplicationIcon(appInfo);
@@ -77,11 +77,11 @@ public class MyAppsActivity extends AppCompatActivity {
                 continue;
             }
         }
-        
+
         // Show how many launchable apps we found
         Toast.makeText(this, "Found " + appList.size() + " launchable apps", Toast.LENGTH_SHORT).show();
     }
-    
+
 
 
     @Override
@@ -101,12 +101,12 @@ public class MyAppsActivity extends AppCompatActivity {
 
     private void saveSelectedAppsToFirestore() {
         List<String> selectedPackages = adapter.getSelectedPackageNames();
-        
+
         if (selectedPackages.isEmpty()) {
             Toast.makeText(this, "No apps selected to save!", Toast.LENGTH_SHORT).show();
             return;
         }
-        
+
         // Build a simple serializable structure
         Map<String, Object> data = new HashMap<>();
         data.put("selectedApps", selectedPackages);
@@ -119,10 +119,10 @@ public class MyAppsActivity extends AppCompatActivity {
             return;
         }
         String userId = currentUser.getUid();
-        
+
         // Show saving feedback
         Toast.makeText(this, "Saving " + selectedPackages.size() + " apps...", Toast.LENGTH_SHORT).show();
-        
+
         db.collection("users").document(userId)
                 .update(data)  // Use update() instead of set() to preserve other fields
                 .addOnSuccessListener(aVoid -> {
@@ -151,7 +151,7 @@ public class MyAppsActivity extends AppCompatActivity {
                             }
                             // Refresh the adapter to show checkboxes
                             adapter.notifyDataSetChanged();
-                            
+
                             // Show feedback
                             Toast.makeText(MyAppsActivity.this, "Loaded " + selectedPackages.size() + " previously selected apps", Toast.LENGTH_SHORT).show();
                         }

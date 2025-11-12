@@ -19,11 +19,11 @@ import java.util.List;
 import java.util.Map;
 
 public class PeopleIHelpActivity extends AppCompatActivity {
-    
+
     private FirebaseFirestore db;
     private FirebaseAuth mAuth;
     private String currentUserId;
-    
+
     private RecyclerView partnersRecyclerView;
     private TextView emptyStateText;
     private PartnerControlAdapter adapter;
@@ -36,7 +36,7 @@ public class PeopleIHelpActivity extends AppCompatActivity {
 
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
-        
+
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser == null) {
             finish();
@@ -48,7 +48,7 @@ public class PeopleIHelpActivity extends AppCompatActivity {
         initViews();
         loadPeopleIHelp();
     }
-    
+
     private void setupToolbar() {
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -57,19 +57,19 @@ public class PeopleIHelpActivity extends AppCompatActivity {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         }
     }
-    
+
     private void initViews() {
         partnersRecyclerView = findViewById(R.id.partnersRecyclerView);
         emptyStateText = findViewById(R.id.emptyStateText);
-        
+
         adapter = new PartnerControlAdapter(partnersList, this::openPartnerControl);
         partnersRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         partnersRecyclerView.setAdapter(adapter);
     }
-    
+
     private void loadPeopleIHelp() {
         partnersList.clear();
-        
+
         // Use the same query as the working debug button
         db.collection("users")
                 .whereEqualTo("mainPartnerId", currentUserId)
@@ -80,8 +80,8 @@ public class PeopleIHelpActivity extends AppCompatActivity {
                         partner.userId = doc.getId();
                         partner.email = doc.getString("email");
                         partner.displayName = doc.getString("displayName");
-                        
-                        // Use the old fallback logic that was working  
+
+                        // Use the old fallback logic that was working
                         if (partner.displayName == null || partner.displayName.trim().isEmpty()) {
                             if (partner.email != null && !partner.email.trim().isEmpty()) {
                                 partner.displayName = partner.email.split("@")[0];
@@ -92,16 +92,16 @@ public class PeopleIHelpActivity extends AppCompatActivity {
                         if (partner.email == null) {
                             partner.email = "No email in database";
                         }
-                        
+
                         partnersList.add(partner);
                     }
-                    
+
                     updateUI();
                 })
                 .addOnFailureListener(e -> updateUI());
     }
 
-    
+
     private void updateUI() {
         if (partnersList.isEmpty()) {
             // Show empty state, hide RecyclerView
@@ -113,21 +113,21 @@ public class PeopleIHelpActivity extends AppCompatActivity {
                 emptyStateText.setText("No partnerships found");
             }
         } else {
-            // Show RecyclerView, hide empty state  
+            // Show RecyclerView, hide empty state
             if (partnersRecyclerView != null) {
                 partnersRecyclerView.setVisibility(android.view.View.VISIBLE);
             }
             if (emptyStateText != null) {
                 emptyStateText.setVisibility(android.view.View.GONE);
             }
-            
+
             // Update adapter
             if (adapter != null) {
                 adapter.notifyDataSetChanged();
             }
         }
     }
-    
+
     private void openPartnerControl(PartnerInfo partner) {
         Intent intent = new Intent(this, PartnerControlActivity.class);
         intent.putExtra("partnerId", partner.userId);
@@ -141,7 +141,7 @@ public class PeopleIHelpActivity extends AppCompatActivity {
         finish();
         return true;
     }
-    
+
     // Data class for partner information
     public static class PartnerInfo {
         public String userId;

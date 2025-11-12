@@ -28,7 +28,7 @@ public class AccountableFirebaseMessagingService extends FirebaseMessagingServic
     public void onNewToken(String token) {
         super.onNewToken(token);
         Log.d("FCM", "New FCM Token: " + token);
-        
+
         // Save token to user's Firestore document
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser != null) {
@@ -78,8 +78,8 @@ public class AccountableFirebaseMessagingService extends FirebaseMessagingServic
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
 
         PendingIntent pendingIntent = PendingIntent.getActivity(
-            this, 
-            requestId.hashCode(), // Use unique ID 
+            this,
+            requestId.hashCode(), // Use unique ID
             intent,
             PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE
         );

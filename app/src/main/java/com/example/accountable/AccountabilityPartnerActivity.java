@@ -22,7 +22,7 @@ public class AccountabilityPartnerActivity extends AppCompatActivity {
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
     private String currentUserId;
-    
+
     private TextView currentPartnerText;
     private EditText partnerEmailInput;
     private Button addPartnerButton, removePartnerButton;
@@ -46,7 +46,7 @@ public class AccountabilityPartnerActivity extends AppCompatActivity {
         setupToolbar();
         initViews();
         setupClickListeners();
-        
+
         // First, ensure current user document exists
         ensureCurrentUserExists(currentUser);
         loadCurrentPartner();
@@ -76,7 +76,7 @@ public class AccountabilityPartnerActivity extends AppCompatActivity {
 
     private void loadCurrentPartner() {
         showProgress(true);
-        
+
         db.collection("users").document(currentUserId)
                 .get()
                 .addOnSuccessListener(documentSnapshot -> {
@@ -93,7 +93,7 @@ public class AccountabilityPartnerActivity extends AppCompatActivity {
                 })
                 .addOnFailureListener(e -> {
                     showProgress(false);
-                    Toast.makeText(this, "Failed to load partner info: " + e.getMessage(), 
+                    Toast.makeText(this, "Failed to load partner info: " + e.getMessage(),
                                  Toast.LENGTH_LONG).show();
                 });
     }
@@ -105,7 +105,7 @@ public class AccountabilityPartnerActivity extends AppCompatActivity {
                     if (documentSnapshot.exists()) {
                         String partnerEmail = documentSnapshot.getString("email");
                         String partnerName = documentSnapshot.getString("displayName");
-                        
+
                         String displayText = partnerName + " (" + partnerEmail + ")";
                         currentPartnerText.setText("Current Partner: " + displayText);
                         removePartnerButton.setVisibility(View.VISIBLE);
@@ -122,14 +122,14 @@ public class AccountabilityPartnerActivity extends AppCompatActivity {
 
     private void addPartner() {
         String partnerEmail = partnerEmailInput.getText().toString().trim();
-        
+
         if (TextUtils.isEmpty(partnerEmail)) {
             Toast.makeText(this, "Please enter partner's email", Toast.LENGTH_SHORT).show();
             return;
         }
 
         showProgress(true);
-        
+
         // First, let's check what users exist in the database for debugging
         Toast.makeText(this, "Searching for user: " + partnerEmail, Toast.LENGTH_SHORT).show();
 
@@ -140,14 +140,14 @@ public class AccountabilityPartnerActivity extends AppCompatActivity {
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     if (!queryDocumentSnapshots.isEmpty()) {
                         String partnerId = queryDocumentSnapshots.getDocuments().get(0).getId();
-                        
+
                         if (partnerId.equals(currentUserId)) {
                             showProgress(false);
-                            Toast.makeText(this, "You cannot be your own accountability partner!", 
+                            Toast.makeText(this, "You cannot be your own accountability partner!",
                                          Toast.LENGTH_SHORT).show();
                             return;
                         }
-                        
+
                         setMainPartner(partnerId, partnerEmail);
                     } else {
                         // Let's check what users actually exist
@@ -156,69 +156,69 @@ public class AccountabilityPartnerActivity extends AppCompatActivity {
                 })
                 .addOnFailureListener(e -> {
                     showProgress(false);
-                    Toast.makeText(this, "Failed to search for user: " + e.getMessage(), 
+                    Toast.makeText(this, "Failed to search for user: " + e.getMessage(),
                                  Toast.LENGTH_LONG).show();
                 });
     }
-    
+
     private void checkExistingUsers(String searchedEmail) {
         db.collection("users")
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     showProgress(false);
-                    
+
                     if (queryDocumentSnapshots.isEmpty()) {
-                        Toast.makeText(this, "❌ No users found in database! Something is wrong.", 
+                        Toast.makeText(this, "❌ No users found in database! Something is wrong.",
                                      Toast.LENGTH_LONG).show();
                         return;
                     }
-                    
+
                     StringBuilder message = new StringBuilder();
                     message.append("❌ User '").append(searchedEmail).append("' not found!\n\n");
                     message.append("📋 Available users in database:\n");
-                    
+
                     int userCount = 0;
                     FirebaseUser currentUser = mAuth.getCurrentUser();
                     String currentUserEmail = currentUser != null ? currentUser.getEmail() : "";
-                    
+
                     for (com.google.firebase.firestore.QueryDocumentSnapshot doc : queryDocumentSnapshots) {
                         String email = doc.getString("email");
                         String displayName = doc.getString("displayName");
-                        
+
                         if (email != null) {
                             userCount++;
                             message.append(userCount).append(". ");
-                            
+
                             if (email.equals(currentUserEmail)) {
                                 message.append("👤 ").append(email).append(" (YOU)");
                             } else {
                                 message.append("👥 ").append(email);
                             }
-                            
+
                             if (displayName != null && !displayName.isEmpty()) {
                                 message.append(" - ").append(displayName);
                             }
                             message.append("\n");
                         }
                     }
-                    
+
                     message.append("\n💡 Solutions:\n");
                     message.append("• Ask '").append(searchedEmail).append("' to create an account first\n");
                     message.append("• Or use one of the emails above\n");
                     message.append("• Make sure email is typed exactly as shown");
-                    
+
                     Toast.makeText(this, message.toString(), Toast.LENGTH_LONG).show();
                 })
                 .addOnFailureListener(e -> {
                     showProgress(false);
-                    Toast.makeText(this, "❌ Database error: " + e.getMessage(), 
+                    Toast.makeText(this, "❌ Database error: " + e.getMessage(),
                                  Toast.LENGTH_LONG).show();
                 });
     }
 
     private void ensureCurrentUserExists(FirebaseUser currentUser) {
         Toast.makeText(this, "🔍 Checking user profile...", Toast.LENGTH_SHORT).show();
-        
+
         // Check if current user document exists, create it if not
         db.collection("users").document(currentUserId)
                 .get()
@@ -234,13 +234,13 @@ public class AccountabilityPartnerActivity extends AppCompatActivity {
                 .addOnFailureListener(e -> {
                     String errorMsg = "❌ Firestore Error: " + e.getClass().getSimpleName() + " - " + e.getMessage();
                     Toast.makeText(this, errorMsg, Toast.LENGTH_LONG).show();
-                    
+
                     // Try to create the document anyway
                     Toast.makeText(this, "🔧 Attempting to create user document directly...", Toast.LENGTH_SHORT).show();
                     createUserDocument(currentUser);
                 });
     }
-    
+
     private void createUserDocument(FirebaseUser user) {
         Map<String, Object> userProfile = new HashMap<>();
         userProfile.put("email", user.getEmail());
@@ -248,10 +248,10 @@ public class AccountabilityPartnerActivity extends AppCompatActivity {
         userProfile.put("createdAt", System.currentTimeMillis());
         userProfile.put("mainPartnerId", null);
         userProfile.put("partners", new java.util.ArrayList<String>());
-        
+
         String docPath = "users/" + user.getUid();
         Toast.makeText(this, "💾 Creating document at: " + docPath, Toast.LENGTH_SHORT).show();
-        
+
         db.collection("users").document(user.getUid())
                 .set(userProfile)
                 .addOnSuccessListener(aVoid -> {
@@ -269,7 +269,7 @@ public class AccountabilityPartnerActivity extends AppCompatActivity {
 
     private void setMainPartner(String partnerId, String partnerEmail) {
         Toast.makeText(this, "🔄 Setting up partnership relationships...", Toast.LENGTH_SHORT).show();
-        
+
         // Update current user's mainPartnerId
         Map<String, Object> updates = new HashMap<>();
         updates.put("mainPartnerId", partnerId);
@@ -277,28 +277,28 @@ public class AccountabilityPartnerActivity extends AppCompatActivity {
         db.collection("users").document(currentUserId)
                 .update(updates)
                 .addOnSuccessListener(aVoid -> {
-                    Toast.makeText(this, "✅ Step 1: You now have " + partnerEmail + " as your partner", 
+                    Toast.makeText(this, "✅ Step 1: You now have " + partnerEmail + " as your partner",
                                  Toast.LENGTH_SHORT).show();
-                    
+
                     // Add current user to partner's partners list
                     db.collection("users").document(partnerId)
                             .update("partners", FieldValue.arrayUnion(currentUserId))
                             .addOnSuccessListener(aVoid2 -> {
                                 showProgress(false);
-                                Toast.makeText(this, "✅ Step 2: " + partnerEmail + " can now see you in 'People I Help'!", 
+                                Toast.makeText(this, "✅ Step 2: " + partnerEmail + " can now see you in 'People I Help'!",
                                              Toast.LENGTH_LONG).show();
                                 partnerEmailInput.setText("");
                                 loadCurrentPartner();
                             })
                             .addOnFailureListener(e -> {
                                 showProgress(false);
-                                Toast.makeText(this, "❌ Step 2 failed: " + e.getMessage(), 
+                                Toast.makeText(this, "❌ Step 2 failed: " + e.getMessage(),
                                              Toast.LENGTH_LONG).show();
                             });
                 })
                 .addOnFailureListener(e -> {
                     showProgress(false);
-                    Toast.makeText(this, "❌ Step 1 failed: " + e.getMessage(), 
+                    Toast.makeText(this, "❌ Step 1 failed: " + e.getMessage(),
                                  Toast.LENGTH_LONG).show();
                 });
     }
@@ -324,14 +324,14 @@ public class AccountabilityPartnerActivity extends AppCompatActivity {
                                             .update("partners", FieldValue.arrayRemove(currentUserId))
                                             .addOnCompleteListener(task -> {
                                                 showProgress(false);
-                                                Toast.makeText(this, "Partner removed successfully", 
+                                                Toast.makeText(this, "Partner removed successfully",
                                                              Toast.LENGTH_SHORT).show();
                                                 loadCurrentPartner();
                                             });
                                 })
                                 .addOnFailureListener(e -> {
                                     showProgress(false);
-                                    Toast.makeText(this, "Failed to remove partner: " + e.getMessage(), 
+                                    Toast.makeText(this, "Failed to remove partner: " + e.getMessage(),
                                                  Toast.LENGTH_LONG).show();
                                 });
                     } else {
@@ -341,7 +341,7 @@ public class AccountabilityPartnerActivity extends AppCompatActivity {
                 })
                 .addOnFailureListener(e -> {
                     showProgress(false);
-                    Toast.makeText(this, "Failed to get current partner: " + e.getMessage(), 
+                    Toast.makeText(this, "Failed to get current partner: " + e.getMessage(),
                                  Toast.LENGTH_LONG).show();
                 });
     }

@@ -1,11 +1,13 @@
 # Copilot Instructions for Accountable Android App
 
 ## Project Overview
+
 **Accountable** is an Android app (Java, not Kotlin) for app usage accountability between friends. Users can select apps to restrict, save selections to Firebase, and allow friends to grant temporary access via notifications and access codes.
 
 ## Architecture & Core Components
 
 ### Data Flow Pattern
+
 - **MainActivity** → Navigation hub with "My Apps" and "Friend Control" buttons
 - **MyAppsActivity** → Lists installed apps with checkboxes, saves selections to Firestore
 - **FriendControlActivity** → Manages friend details and generates access codes via SharedPreferences
@@ -13,6 +15,7 @@
 - **Firebase Integration** → Firestore for app selections, Realtime Database for access requests, FCM for notifications
 
 ### Key Model Classes
+
 ```java
 // Core data models in app/src/main/java/com/example/accountable/
 AppModel.java     // App info with selection state (Firestore-compatible)
@@ -22,6 +25,7 @@ FriendControl.java // Friend relationship management
 ```
 
 ### Adapter Pattern Usage
+
 - **AppAdapter** (MyAppsActivity) - Displays installed apps with checkboxes, handles selection state
 - **FriendAppAdapter** (FriendActivity) - Shows restricted apps to friends (read-only)
 - Both use `item_app.xml` and `item_friend_app.xml` respectively
@@ -29,21 +33,24 @@ FriendControl.java // Friend relationship management
 ## Development Conventions
 
 ### Firebase Integration Patterns
+
 ```java
 // Firestore document structure for user app selections
 "users/{userId}" → { "selectedApps": ["com.package.name1", "com.package.name2"] }
 
-// Realtime Database for access requests  
+// Realtime Database for access requests
 "requests/{requestId}" → AccessRequest object with status tracking
 ```
 
 ### State Management
+
 - **SharedPreferences** for friend details (`AccountablePrefs`)
 - **Firestore** for persistent app selections (static userId "user1" for now)
 - **Firebase Realtime Database** for real-time access requests between friends
 - **FCM tokens** for push notifications (handled by AccountableFirebaseMessagingService)
 
 ### UI Patterns
+
 - **Toolbar integration** - All activities use Material Design toolbars with back navigation
 - **RecyclerView + LinearLayoutManager** - Standard pattern for all list displays
 - **Material Design components** - TextInputLayout, MaterialButton for consistent UI
@@ -52,6 +59,7 @@ FriendControl.java // Friend relationship management
 ## Build & Development Workflow
 
 ### Essential Commands
+
 ```bash
 # Build the project (from project root)
 ./gradlew assembleDebug
@@ -64,6 +72,7 @@ FriendControl.java // Friend relationship management
 ```
 
 ### Package Management with gradle/libs.versions.toml
+
 ```toml
 # Version catalog approach - modify gradle/libs.versions.toml for dependency updates
 [versions]
@@ -77,6 +86,7 @@ firebase-database = { group = "com.google.firebase", name = "firebase-database" 
 ```
 
 ### Critical Permissions & Manifest Setup
+
 - `QUERY_ALL_PACKAGES` permission required for listing installed apps (Android 11+)
 - Firebase services registered in AndroidManifest.xml
 - Activities that should be classes are incorrectly registered (needs cleanup)
@@ -84,11 +94,13 @@ firebase-database = { group = "com.google.firebase", name = "firebase-database" 
 ## Firebase Configuration Specifics
 
 ### Authentication & User Management
+
 - Currently uses static userId "user1" - **expand to proper Firebase Auth later**
 - Friend relationships managed through SharedPreferences and access codes
 - Access codes are 6-digit random numbers for temporary friend authentication
 
 ### Data Persistence Strategy
+
 ```java
 // Save pattern in MyAppsActivity
 List<String> selectedPackages = adapter.getSelectedPackageNames();
@@ -104,6 +116,7 @@ if (selectedPackages != null) {
 ```
 
 ### Notification System
+
 - **AccountableFirebaseMessagingService** handles FCM notifications
 - **AccessRequestActivity** processes friend requests via notification taps
 - MainActivity.java:
@@ -118,35 +131,41 @@ if (selectedPackages != null) {
 ## Common Debugging Patterns
 
 ### Firebase Debug Checklist
+
 1. Verify `google-services.json` is in `app/` directory
 2. Check Firebase project configuration matches package name `com.example.accountable`
 3. Ensure Firestore rules allow read/write for development
 4. Test Firebase connection with simple document read/write operations
 
 ### RecyclerView State Issues
+
 - **Selection persistence** - Use `setOnCheckedChangeListener(null)` before programmatic checkbox updates
 - **Item click conflicts** - Handle both checkbox and row click events properly
 - **Data updates** - Call `notifyDataSetChanged()` after adapter data modifications
 
 ### Activity Navigation
+
 - All activities use `finish()` for back navigation rather than fragment transactions
 - Toolbar back buttons implemented via `getSupportActionBar().setDisplayHomeAsUpEnabled(true)`
 
 ## Extending the App
 
 ### Adding New Features
+
 1. **New Activities** - Follow the toolbar + RecyclerView pattern established
 2. **Firebase Collections** - Use consistent document structure with error handling
 3. **Model Classes** - Separate serializable (Firebase) from runtime-only (Drawable) data
 4. **Permissions** - Add new permissions to AndroidManifest.xml with proper API level handling
 
 ### Code Quality Guidelines
+
 - **Java conventions** - Use explicit imports, proper access modifiers, and consistent naming
 - **Error handling** - Always include Firebase failure listeners with user-friendly messages
 - **Resource naming** - Follow Android naming conventions (snake_case for layouts, camelCase for IDs)
 - **Memory management** - Avoid static references to Context, use appropriate lifecycle awareness
 
 ## Testing & Validation
+
 - **Unit tests** in `app/src/test/java/com/example/accountable/ExampleUnitTest.kt`
 - **Instrumented tests** in `app/src/androidTest/java/com/example/accountable/ExampleInstrumentedTest.kt`
 - **Manual testing** - Test Firebase connectivity, app listing, and friend workflows on physical devices

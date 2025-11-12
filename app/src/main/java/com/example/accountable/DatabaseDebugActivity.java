@@ -19,7 +19,7 @@ import java.util.Objects;
 
 public class DatabaseDebugActivity extends AppCompatActivity {
     private static final String TAG = "DatabaseDebug";
-    
+
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
     private String currentUserId;
@@ -49,7 +49,7 @@ public class DatabaseDebugActivity extends AppCompatActivity {
         }
 
         currentUserId = currentUser.getUid();
-        
+
         initViews();
         debugDatabase();
     }
@@ -58,7 +58,7 @@ public class DatabaseDebugActivity extends AppCompatActivity {
         debugOutput = findViewById(R.id.debugOutput);
         Button refreshButton = findViewById(R.id.refreshButton);
         Button fixDataButton = findViewById(R.id.fixDataButton);
-        
+
         refreshButton.setOnClickListener(v -> debugDatabase());
         fixDataButton.setOnClickListener(v -> fixPartnershipData());
     }
@@ -75,30 +75,30 @@ public class DatabaseDebugActivity extends AppCompatActivity {
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     output.append("📋 ALL USERS IN DATABASE:\n");
                     output.append("Users found: ").append(queryDocumentSnapshots.size()).append("\n\n");
-                    
+
                     for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
                         String userId = doc.getId();
                         String email = doc.getString("email");
                         String displayName = doc.getString("displayName");
                         String mainPartnerId = doc.getString("mainPartnerId");
                         Object partners = doc.get("partners");
-                        
+
                         output.append("👤 User: ").append(userId.substring(0, 8)).append("...\n");
                         output.append("   Email: ").append(email != null ? email : "NULL").append("\n");
                         output.append("   Name: ").append(displayName != null ? displayName : "NULL").append("\n");
                         output.append("   Main Partner: ").append(mainPartnerId != null ? mainPartnerId.substring(0, 8) + "..." : "NULL").append("\n");
                         output.append("   Partners List: ").append(partners != null ? partners.toString() : "NULL").append("\n");
-                        
+
                         if (userId.equals(currentUserId)) {
                             output.append("   ⭐ THIS IS YOU!\n");
                         }
-                        
+
                         output.append("\n");
                     }
-                    
+
                     output.append("\n🔗 PARTNERSHIP ANALYSIS:\n");
                     output.append("========================\n");
-                    
+
                     // Find people who chose current user as their partner
                     int peopleYouHelp = 0;
                     for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
@@ -108,13 +108,13 @@ public class DatabaseDebugActivity extends AppCompatActivity {
                             output.append("✅ ").append(doc.getString("email")).append(" chose you as partner\n");
                         }
                     }
-                    
+
                     if (peopleYouHelp == 0) {
                         output.append("❌ No one has chosen you as their accountability partner\n");
                     }
-                    
+
                     output.append("\nPeople you should see in 'People I Help': ").append(peopleYouHelp).append("\n");
-                    
+
                     debugOutput.setText(output.toString());
                 })
                 .addOnFailureListener(e -> {
@@ -122,10 +122,10 @@ public class DatabaseDebugActivity extends AppCompatActivity {
                     debugOutput.setText(output.toString());
                 });
     }
-    
+
     private void fixPartnershipData() {
         Toast.makeText(this, "🔧 Creating test partnership data...", Toast.LENGTH_SHORT).show();
-        
+
         // For now, just refresh to see current state
         debugDatabase();
     }

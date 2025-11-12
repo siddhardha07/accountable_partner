@@ -18,12 +18,12 @@ public class AppBlockedActivity extends AppCompatActivity {
     private TextView usageStats;
     private Button requestAccessButton;
     private Button goHomeButton;
-    
+
     private String packageName;
     private String appName;
     private long usedTime;
     private long timeLimit;
-    
+
     private FirebaseFirestore db;
     private String currentUserId;
 
@@ -31,28 +31,28 @@ public class AppBlockedActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_app_blocked);
-        
+
         // Initialize Firebase
         FirebaseAuth mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
-        
+
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser != null) {
             currentUserId = currentUser.getUid();
         }
-        
+
         // Get app details from intent
         Intent intent = getIntent();
         packageName = intent.getStringExtra("packageName");
         appName = intent.getStringExtra("appName");
         usedTime = intent.getLongExtra("usedTime", 0);
         timeLimit = intent.getLongExtra("timeLimit", 0);
-        
+
         initViews();
         setupClickListeners();
         displayBlockingInfo();
     }
-    
+
     private void initViews() {
         blockedAppName = findViewById(R.id.blockedAppName);
         blockReason = findViewById(R.id.blockReason);
@@ -60,30 +60,30 @@ public class AppBlockedActivity extends AppCompatActivity {
         requestAccessButton = findViewById(R.id.requestAccessButton);
         goHomeButton = findViewById(R.id.goHomeButton);
     }
-    
+
     private void setupClickListeners() {
         requestAccessButton.setOnClickListener(v -> requestPartnerAccess());
         goHomeButton.setOnClickListener(v -> goToHomeScreen());
     }
-    
+
     private void displayBlockingInfo() {
         blockedAppName.setText(appName != null ? appName : packageName);
-        
+
         if (timeLimit == 0) {
             blockReason.setText("This app has been blocked by your accountability partner.");
             usageStats.setText("Contact your partner if you need access to this app.");
         } else {
             long usedMinutes = usedTime / 60000;
             long limitMinutes = timeLimit / 60000;
-            
+
             blockReason.setText("You've reached your daily time limit for this app.");
             usageStats.setText(String.format("Used: %d minutes\nLimit: %d minutes", usedMinutes, limitMinutes));
         }
     }
-    
+
     private void requestPartnerAccess() {
         if (currentUserId == null) return;
-        
+
         // Get user's main partner
         db.collection("users").document(currentUserId)
                 .get()
@@ -97,7 +97,7 @@ public class AppBlockedActivity extends AppCompatActivity {
                     // Handle error
                 });
     }
-    
+
     private void sendAccessRequest(String partnerId) {
         // Get user's name first
         db.collection("users").document(currentUserId)
@@ -106,7 +106,7 @@ public class AppBlockedActivity extends AppCompatActivity {
                     String userName = userDoc.getString("name");
                     final String finalUserName = (userName == null) ? "Someone" : userName;
                     final String finalAppName = appName;
-                    
+
                     // Create access request in Firestore
                     java.util.Map<String, Object> request = new java.util.HashMap<>();
                     request.put("userId", currentUserId);
@@ -117,18 +117,18 @@ public class AppBlockedActivity extends AppCompatActivity {
                     request.put("requestType", "temporary_access");
                     request.put("timestamp", System.currentTimeMillis());
                     request.put("status", "pending");
-                    
+
                     db.collection("accessRequests")
                             .add(request)
                             .addOnSuccessListener(documentReference -> {
                                 String requestId = documentReference.getId();
-                                
+
                                 // Send FCM notification to partner
                                 sendNotificationToPartner(partnerId, finalUserName, finalAppName, requestId);
-                                
+
                                 requestAccessButton.setText("Request Sent ✓");
                                 requestAccessButton.setEnabled(false);
-                                
+
                                 // Start monitoring for response
                                 monitorRequestResponse(requestId);
                             })
@@ -138,7 +138,7 @@ public class AppBlockedActivity extends AppCompatActivity {
                             });
                 });
     }
-    
+
     private void sendNotificationToPartner(String partnerId, String userName, String appName, String requestId) {
         // Get partner's FCM token
         db.collection("users").document(partnerId)
@@ -156,7 +156,7 @@ public class AppBlockedActivity extends AppCompatActivity {
                     Log.e("FCM", "Failed to get partner FCM token", e);
                 });
     }
-    
+
     private void sendFCMNotification(String fcmToken, String userName, String appName, String requestId) {
         // Create a simple in-app notification approach since FCM HTTP requires server key
         // Instead, let's use a Firestore-based notification that the partner app can listen to
@@ -168,7 +168,7 @@ public class AppBlockedActivity extends AppCompatActivity {
         notificationData.put("type", "access_request");
         notificationData.put("timestamp", System.currentTimeMillis());
         notificationData.put("status", "pending");
-        
+
         // Save to a notifications collection that the partner's app can listen to
         db.collection("pendingNotifications").add(notificationData)
                 .addOnSuccessListener(documentReference -> {
@@ -178,7 +178,7 @@ public class AppBlockedActivity extends AppCompatActivity {
                     Log.e("FCM", "Failed to save notification", e);
                 });
     }
-    
+
     private void monitorRequestResponse(String requestId) {
         // Listen for real-time updates to the access request
         db.collection("accessRequests").document(requestId)
@@ -189,13 +189,13 @@ public class AppBlockedActivity extends AppCompatActivity {
                             // Get duration if available
                             Long durationSeconds = documentSnapshot.getLong("durationSeconds");
                             Long accessExpiresAt = documentSnapshot.getLong("accessExpiresAt");
-                            
+
                             if (durationSeconds != null && accessExpiresAt != null) {
                                 // Save temporary access grant to SharedPreferences or Firestore
                                 saveTemporaryAccess(packageName, accessExpiresAt);
                                 Log.d("AppBlocked", "Access granted for " + durationSeconds + " seconds");
                             }
-                            
+
                             // Access approved - close blocking screen
                             finish();
                         } else if ("denied".equals(status)) {
@@ -206,18 +206,18 @@ public class AppBlockedActivity extends AppCompatActivity {
                     }
                 });
     }
-    
+
     private void saveTemporaryAccess(String packageName, long expiresAt) {
         // Save to user's Firestore document for the AppMonitoringService to check
         FirebaseAuth mAuth = FirebaseAuth.getInstance();
         if (mAuth.getCurrentUser() != null) {
             String userId = mAuth.getCurrentUser().getUid();
-            
+
             java.util.Map<String, Object> accessData = new java.util.HashMap<>();
             accessData.put("packageName", packageName);
             accessData.put("expiresAt", expiresAt);
             accessData.put("grantedAt", System.currentTimeMillis());
-            
+
             db.collection("users").document(userId)
                     .collection("temporaryAccess").document(packageName)
                     .set(accessData)
@@ -229,7 +229,7 @@ public class AppBlockedActivity extends AppCompatActivity {
                     });
         }
     }
-    
+
     private void goToHomeScreen() {
         Intent homeIntent = new Intent(Intent.ACTION_MAIN);
         homeIntent.addCategory(Intent.CATEGORY_HOME);
@@ -237,7 +237,7 @@ public class AppBlockedActivity extends AppCompatActivity {
         startActivity(homeIntent);
         finish();
     }
-    
+
     @Override
     public void onBackPressed() {
         // Prevent going back to the blocked app

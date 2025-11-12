@@ -34,10 +34,10 @@ public class PartnerControlAdapter extends RecyclerView.Adapter<PartnerControlAd
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         PeopleIHelpActivity.PartnerInfo partner = partners.get(position);
-        
+
         holder.nameText.setText(partner.displayName);
         holder.emailText.setText(partner.email);
-        
+
         holder.manageButton.setOnClickListener(v -> {
             if (clickListener != null) {
                 clickListener.onPartnerClick(partner);
