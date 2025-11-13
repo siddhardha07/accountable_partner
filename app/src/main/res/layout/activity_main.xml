@@ -1,48 +1,86 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:gravity="center"
-    android:orientation="vertical"
-    android:padding="24dp">
+    android:background="@color/background_light">
 
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="32dp"
+    android:gravity="center">
+
+    <!-- App Title with modern styling -->
     <TextView
         android:text="Accountable"
-        android:textSize="28sp"
+        android:textSize="36sp"
         android:textStyle="bold"
-        android:layout_marginBottom="40dp"
+        android:textColor="@color/text_primary"
+        android:layout_marginBottom="8dp"
         android:gravity="center"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
 
-    <Button
+    <!-- Subtitle -->
+    <TextView
+        android:text="Stay accountable with friends"
+        android:textSize="16sp"
+        android:textColor="@color/text_secondary"
+        android:layout_marginBottom="48dp"
+        android:gravity="center"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <!-- Primary Actions -->
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/myAppsButton"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="56dp"
         android:layout_marginBottom="16dp"
-        android:text="My Apps"
-        android:textSize="16sp" />
+        android:text="📱 My Apps"
+        android:textSize="16sp"
+        android:textAllCaps="false"
+        android:backgroundTint="@color/primary_blue"
+        app:cornerRadius="12dp"
+        app:iconGravity="textStart" />
 
-    <Button
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/accountabilityPartnerButton"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="56dp"
         android:layout_marginBottom="16dp"
-        android:text="Accountability Partner"
-        android:textSize="16sp" />
+        android:text="🤝 Accountability Partner"
+        android:textSize="16sp"
+        android:textAllCaps="false"
+        android:backgroundTint="@color/accent_green"
+        app:cornerRadius="12dp"
+        app:iconGravity="textStart" />
 
-    <Button
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/peopleIHelpButton"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        android:text="People I Help"
-        android:textSize="16sp" />
+        android:layout_height="56dp"
+        android:layout_marginBottom="32dp"
+        android:text="👥 People I Help"
+        android:textSize="16sp"
+        android:textAllCaps="false"
+        android:backgroundTint="@color/warning_orange"
+        app:cornerRadius="12dp"
+        app:iconGravity="textStart" />
 
-    <Button
+    <!-- Secondary Action -->
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/signOutButton"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="48dp"
         android:text="Sign Out"
         android:textSize="14sp"
-        style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+        android:textAllCaps="false"
+        android:textColor="@color/text_secondary"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        app:cornerRadius="12dp"
+        app:strokeColor="@color/text_secondary" />
+
 </LinearLayout>
+</ScrollView>

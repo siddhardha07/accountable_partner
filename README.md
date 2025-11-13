@@ -332,8 +332,7 @@ of this software and associated documentation...
 
 - 🐛 **Issues**: [GitHub Issues](https://github.com/siddhardha07/accountable_partner/issues)
 - 💬 **Discussions**: [GitHub Discussions](https://github.com/siddhardha07/accountable_partner/discussions)
-- 📧 **Email**: siddhardha07@gmail.com
-- 🐦 **Twitter**: [@siddhardha07](https://twitter.com/siddhardha07)
+- 📧 **Email**: ideasbag31@gmail.com
 
 ---
 
