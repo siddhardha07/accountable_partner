@@ -1,38 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginHorizontal="16dp"
-    android:layout_marginVertical="4dp"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="2dp"
-    app:cardBackgroundColor="@color/surface_white">
-
-<LinearLayout
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:padding="16dp"
+    android:paddingHorizontal="16dp"
+    android:paddingVertical="12dp"
     android:orientation="horizontal"
-    android:gravity="center_vertical">
+    android:gravity="center_vertical"
+    android:background="@color/surface_white"
+    android:minHeight="56dp">
 
-    <!-- App Icon with rounded background -->
-    <com.google.android.material.card.MaterialCardView
-        android:layout_width="48dp"
-        android:layout_height="48dp"
+    <!-- App Icon -->
+    <ImageView
+        android:id="@+id/app_icon"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
         android:layout_marginEnd="16dp"
-        app:cardCornerRadius="12dp"
-        app:cardElevation="1dp">
+        android:scaleType="fitCenter" />
 
-        <ImageView
-            android:id="@+id/app_icon"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:padding="4dp" />
-    </com.google.android.material.card.MaterialCardView>
-
-    <!-- App Name with modern typography -->
+    <!-- App Name -->
     <TextView
         android:id="@+id/app_name"
         android:layout_width="0dp"
@@ -42,15 +29,17 @@
         android:textColor="@color/text_primary"
         android:textStyle="normal"
         android:maxLines="1"
-        android:ellipsize="end" />
+        android:ellipsize="end"
+        android:fontFamily="sans-serif" />
 
-    <!-- Modern checkbox -->
+    <!-- Smaller checkbox -->
     <com.google.android.material.checkbox.MaterialCheckBox
         android:id="@+id/app_checkbox"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        app:buttonTint="@color/primary_blue" />
+        android:layout_marginStart="4dp"
+        android:minWidth="0dp"
+        android:minHeight="0dp"
+        app:buttonTint="@color/success_blue" />
 
 </LinearLayout>
-</com.google.android.material.card.MaterialCardView>

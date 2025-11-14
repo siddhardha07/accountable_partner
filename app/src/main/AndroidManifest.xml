@@ -28,9 +28,6 @@
             android:name=".MainActivity"
             android:exported="false" />
         <activity
-            android:name=".MyAppsActivity"
-            android:exported="false" />
-        <activity
             android:name=".AccountabilityPartnerActivity"
             android:exported="false" />
         <activity
@@ -49,12 +46,7 @@
             android:name=".PartnerApprovalActivity"
             android:exported="false"
             android:launchMode="singleTop" />
-        <activity
-            android:name=".FriendControlActivity"
-            android:exported="false" />
-        <activity
-            android:name=".FriendActivity"
-            android:exported="false" />
+
 
         <service
             android:name=".AccountableFirebaseMessagingService"
