@@ -73,11 +73,8 @@ public class AppBlockedActivity extends AppCompatActivity {
             blockReason.setText("This app has been blocked by your accountability partner.");
             usageStats.setText("Contact your partner if you need access to this app.");
         } else {
-            long usedMinutes = usedTime / 60000;
-            long limitMinutes = timeLimit / 60000;
-
-            blockReason.setText("You've reached your daily time limit for this app.");
-            usageStats.setText(String.format("Used: %d minutes\nLimit: %d minutes", usedMinutes, limitMinutes));
+            blockReason.setText("Limit exceeded");
+            usageStats.setText("Contact your partner if you need access to this app.");
         }
     }
 
@@ -88,7 +85,6 @@ public class AppBlockedActivity extends AppCompatActivity {
         TimeSelectionDialog.show(this, new TimeSelectionDialog.TimeSelectionListener() {
             @Override
             public void onTimeSelected(long totalSeconds) {
-                // Time selected, now get partner and send request
                 db.collection("users").document(currentUserId)
                         .get()
                         .addOnSuccessListener(documentSnapshot -> {
@@ -164,7 +160,7 @@ public class AppBlockedActivity extends AppCompatActivity {
                         // Send actual FCM notification using HTTP API
                         sendFCMNotification(fcmToken, userName, appName, requestId, requestedSeconds);
                     } else {
-                        Log.w("FCM", "Partner FCM token not found for user: " + partnerId);
+                        // FCM token not found
                     }
                 })
                 .addOnFailureListener(e -> {
@@ -191,7 +187,7 @@ public class AppBlockedActivity extends AppCompatActivity {
         // Save to a notifications collection that the partner's app can listen to
         db.collection("pendingNotifications").add(notificationData)
                 .addOnSuccessListener(documentReference -> {
-                    Log.d("FCM", "Notification saved for partner to receive");
+                    // Notification sent
                 })
                 .addOnFailureListener(e -> {
                     Log.e("FCM", "Failed to save notification", e);

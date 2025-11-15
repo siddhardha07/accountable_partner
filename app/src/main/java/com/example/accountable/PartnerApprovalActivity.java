@@ -61,7 +61,7 @@ public class PartnerApprovalActivity extends AppCompatActivity {
         requestTime = getIntent().getStringExtra("requestTime");
         userRequestedSeconds = getIntent().getLongExtra("requestedSeconds", 0);
 
-        Log.d(TAG, "Approval request: " + requestId + " for " + appName + " from " + requesterName);
+        // Request received
 
         // Initialize views
         initializeViews();
@@ -165,7 +165,7 @@ public class PartnerApprovalActivity extends AppCompatActivity {
         allowButton.setEnabled(false);
         denyButton.setEnabled(false);
 
-        Log.d(TAG, "Processing approval: " + approved + " for request: " + requestId);
+        // Processing approval
 
         // Use the user's requested duration (no AP time selection)
         long totalSeconds = userRequestedSeconds;
@@ -192,7 +192,7 @@ public class PartnerApprovalActivity extends AppCompatActivity {
                             String requestType = documentSnapshot.getString("requestType");
                             boolean isUnrestrictRequest = "UNRESTRICT_APP".equals(requestType);
 
-                            Log.d(TAG, "Request " + (approved ? "approved" : "denied") + " - Type: " + requestType);
+                            // Request processed
 
                             String message;
                             if (approved) {
@@ -213,7 +213,7 @@ public class PartnerApprovalActivity extends AppCompatActivity {
                             }
 
                             Toast.makeText(this, message, Toast.LENGTH_LONG).show();
-                            android.util.Log.d(TAG, "Partner response sent: " + message);
+                            // Response sent
 
                             // Close the activity
                             finish();

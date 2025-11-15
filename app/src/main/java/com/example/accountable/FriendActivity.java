@@ -98,7 +98,7 @@ public class FriendActivity extends AppCompatActivity {
                             Toast.makeText(this, "User has not saved any apps yet.", Toast.LENGTH_SHORT).show();
                         }
                     } else {
-                        Log.d(TAG, "get failed with ", task.getException());
+                        Log.d(TAG, "Get failed with ", task.getException());
                         Toast.makeText(this, "Failed to load apps.", Toast.LENGTH_SHORT).show();
                     }
                 });

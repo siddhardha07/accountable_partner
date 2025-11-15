@@ -22,6 +22,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -44,6 +45,7 @@ public class AppMonitoringService extends AccessibilityService {
     private Map<String, Long> lastBlockTime = new ConcurrentHashMap<>(); // Track when apps were last blocked
     private Map<String, Long> temporaryAccessExpiry = new ConcurrentHashMap<>(); // Track temporary access expiry times
     private Set<String> cachedBlockedApps = ConcurrentHashMap.newKeySet(); // Fast-access cache for blocked apps
+    private Set<String> userSelectedApps = ConcurrentHashMap.newKeySet(); // Cache of user's selected apps for fast lookup
 
     private Handler handler = new Handler(Looper.getMainLooper());
     private Runnable usageChecker;
@@ -121,6 +123,13 @@ public class AppMonitoringService extends AccessibilityService {
             return false;
         }
 
+        // FIRST: Check if app is even in user's selected apps (must be synchronous check)
+        // If app is not in selectedApps, remove from cache and return false
+        if (!isAppInUserSelection(packageName)) {
+            cachedBlockedApps.remove(packageName); // Clean up cache for unselected apps
+            return false; // App not selected = not blocked
+        }
+
         // FAST PATH: Check cache first for immediate blocking decision
         if (cachedBlockedApps.contains(packageName)) {
             // Double-check temporary access quickly
@@ -147,6 +156,10 @@ public class AppMonitoringService extends AccessibilityService {
         }
 
         return isBlocked;
+    }
+
+    private boolean isAppInUserSelection(String packageName) {
+        return userSelectedApps.contains(packageName);
     }
 
     private boolean hasValidTemporaryAccess(String packageName) {
@@ -285,11 +298,8 @@ public class AppMonitoringService extends AccessibilityService {
     private void checkAppRestrictions(String packageName) {
         // Check if user is authenticated and has restrictions
         if (currentUserId == null) {
-            Log.d(TAG, "❌ NO USER ID - cannot check restrictions for " + packageName);
             return;
         }
-
-        Log.d(TAG, "🔍 CHECKING RESTRICTIONS for " + packageName + " (userId: " + currentUserId + ")");
 
         // Check if this app is in user's restricted list
         db.collection("users").document(currentUserId)
@@ -297,15 +307,9 @@ public class AppMonitoringService extends AccessibilityService {
                 .addOnSuccessListener(documentSnapshot -> {
                     if (documentSnapshot.exists()) {
                         List<String> selectedApps = (List<String>) documentSnapshot.get("selectedApps");
-                        Log.d(TAG, "📋 User selected apps: " + (selectedApps != null ? selectedApps.toString() : "null"));
                         if (selectedApps != null && selectedApps.contains(packageName)) {
-                            Log.d(TAG, "✅ " + packageName + " IS RESTRICTED - checking time limit");
                             checkTimeLimit(packageName);
-                        } else {
-                            Log.d(TAG, "✅ " + packageName + " NOT restricted - allowing");
                         }
-                    } else {
-                        Log.d(TAG, "❌ User document does not exist for: " + currentUserId);
                     }
                 })
                 .addOnFailureListener(e -> {
@@ -326,15 +330,11 @@ public class AppMonitoringService extends AccessibilityService {
         long dailyUsage = totalUsageToday.getOrDefault(packageName, 0L);
         long limit = appLimits.getOrDefault(packageName, 0L); // Default to 0 (blocked)
 
-        Log.d(TAG, packageName + " - Usage: " + (dailyUsage/60000) + "min, Limit: " + (limit/60000) + "min");
-
         // IMMEDIATE BLOCKING: If limit is 0 minutes, block immediately (unless temporary access)
         if (limit == 0) {
             if (hasValidTemporaryAccess(packageName)) {
-                Log.d(TAG, "⏳ " + packageName + " has 0-minute limit BUT temporary access granted - ALLOWING");
                 return; // Don't block, temporary access overrides 0-minute limit
             } else {
-                Log.d(TAG, "🚫 IMMEDIATE BLOCK: " + packageName + " has 0-minute limit and no temporary access");
                 blockApp(packageName, dailyUsage, limit);
                 return;
             }
@@ -343,7 +343,6 @@ public class AppMonitoringService extends AccessibilityService {
         // For non-zero limits, check if usage exceeded
         if (dailyUsage >= limit) {
             if (hasValidTemporaryAccess(packageName)) {
-                Log.d(TAG, "⏳ " + packageName + " exceeded limit BUT temporary access granted - ALLOWING");
                 return; // Don't block, temporary access overrides limit
             } else {
                 blockApp(packageName, dailyUsage, limit);
@@ -443,7 +442,6 @@ public class AppMonitoringService extends AccessibilityService {
     private void cancelBlockEnforcement() {
         if (blockEnforcer != null) {
             handler.removeCallbacks(blockEnforcer);
-            Log.d(TAG, "🛑 Block enforcement cancelled");
         }
     }
 
@@ -484,15 +482,8 @@ public class AppMonitoringService extends AccessibilityService {
         startActivity(blockIntent);
 
         // Also show a brief toast for immediate feedback
-        String quickMessage;
-        if (limit == 0) {
-            quickMessage = "🚫 " + appName + " is blocked by your partner";
-        } else {
-            long usedMinutes = usedTime / 60000;
-            long limitMinutes = limit / 60000;
-            quickMessage = "🚫 " + appName + " limit exceeded (" + usedMinutes + "/" + limitMinutes + "min)";
-        }
-        Toast.makeText(this, quickMessage, Toast.LENGTH_SHORT).show();
+        // Simple toast - user already knows which app they're using
+        Toast.makeText(this, "Access blocked", Toast.LENGTH_SHORT).show();
     }
 
     private void showTimeWarning(String packageName, long remainingTime) {
@@ -505,15 +496,8 @@ public class AppMonitoringService extends AccessibilityService {
     }
 
     private void showBlockedMessage(String packageName, long usedTime, long limit) {
-        String appName = getAppName(packageName);
-        long usedMinutes = usedTime / 60000;
-        long limitMinutes = limit / 60000;
-
-        String message = "🚫 " + appName + " BLOCKED!\n" +
-                        "Used: " + usedMinutes + " min / " + limitMinutes + " min\n" +
-                        "Your accountability partner has been notified.";
-
-        Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+        // Simple, professional message
+        Toast.makeText(this, "Access blocked - Partner notified", Toast.LENGTH_LONG).show();
     }
 
     private void notifyPartner(String packageName, long usedTime, long limit) {
@@ -593,7 +577,6 @@ public class AppMonitoringService extends AccessibilityService {
     @Override
     protected void onServiceConnected() {
         super.onServiceConnected();
-        Log.d(TAG, "🚀 SERVICE CONNECTED - Initializing AppMonitoringService");
 
         // Initialize Firebase
         mAuth = FirebaseAuth.getInstance();
@@ -618,7 +601,7 @@ public class AppMonitoringService extends AccessibilityService {
         setServiceInfo(info);
 
         Log.d(TAG, "🔧 ACCESSIBILITY SERVICE configured");
-        Toast.makeText(this, "🔍 App monitoring started", Toast.LENGTH_SHORT).show();
+        // Service started silently
 
         // Start periodic usage checking
         startUsageMonitoring();
@@ -671,22 +654,51 @@ public class AppMonitoringService extends AccessibilityService {
     private void loadUserRestrictedApps() {
         if (currentUserId == null) return;
 
+        // Set up real-time listener for user's selected apps to detect changes
         db.collection("users").document(currentUserId)
-                .get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    if (documentSnapshot.exists()) {
+                .addSnapshotListener((documentSnapshot, e) -> {
+                    if (e != null) {
+                        Log.e(TAG, "Failed to listen for user's restricted apps changes", e);
+                        return;
+                    }
+
+                    if (documentSnapshot != null && documentSnapshot.exists()) {
                         List<String> selectedApps = (List<String>) documentSnapshot.get("selectedApps");
+
                         if (selectedApps != null) {
-                            Log.d(TAG, "Loaded " + selectedApps.size() + " restricted apps for monitoring");
+                            Log.d(TAG, "🔄 Updated restricted apps list: " + selectedApps.size() + " apps");
+
+                            // Update the userSelectedApps cache
+                            userSelectedApps.clear();
+                            userSelectedApps.addAll(selectedApps);
+
+                            // Clear cache for apps that are no longer selected
+                            Set<String> currentlySelected = new HashSet<>(selectedApps);
+                            Set<String> toRemoveFromCache = new HashSet<>();
+
+                            for (String cachedApp : cachedBlockedApps) {
+                                if (!currentlySelected.contains(cachedApp)) {
+                                    toRemoveFromCache.add(cachedApp);
+                                }
+                            }
+
+                            // Remove unselected apps from cache
+                            for (String appToRemove : toRemoveFromCache) {
+                                cachedBlockedApps.remove(appToRemove);
+                                Log.d(TAG, "🗑️ Removed " + appToRemove + " from blocked cache (unchecked)");
+                            }
+
                             // Pre-load limits for all restricted apps
                             for (String packageName : selectedApps) {
                                 loadAppLimit(packageName, null);
                             }
+                        } else {
+                            // No apps selected - clear entire cache
+                            userSelectedApps.clear();
+                            cachedBlockedApps.clear();
+                            Log.d(TAG, "🗑️ Cleared all caches (no apps selected)");
                         }
                     }
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Failed to load user's restricted apps", e);
                 });
     }
 
@@ -745,17 +757,30 @@ public class AppMonitoringService extends AccessibilityService {
 
     private void checkDailyReset() {
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        long lastResetDay = prefs.getLong("last_reset_day", 0);
-        long currentDay = System.currentTimeMillis() / (24 * 60 * 60 * 1000); // Current day number
 
-        if (currentDay != lastResetDay) {
-            Log.d(TAG, "New day detected, resetting usage statistics");
+        // Get the last reset date (YYYY-MM-DD format as string)
+        String lastResetDate = prefs.getString("last_reset_date", "");
+
+        // Get current date in YYYY-MM-DD format
+        Calendar calendar = Calendar.getInstance();
+        String currentDate = String.format(Locale.US, "%04d-%02d-%02d",
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH) + 1,
+            calendar.get(Calendar.DAY_OF_MONTH));
+
+        // Check if we've crossed midnight (different date)
+        if (!currentDate.equals(lastResetDate)) {
+            Log.d(TAG, "Midnight reset: " + lastResetDate + " -> " + currentDate);
+
+            // Reset all usage statistics
             totalUsageToday.clear();
             lastBlockTime.clear();
+            cachedBlockedApps.clear(); // Also clear the blocked apps cache
 
-            prefs.edit().putLong("last_reset_day", currentDay).apply();
+            // Update the last reset date
+            prefs.edit().putString("last_reset_date", currentDate).apply();
 
-            Toast.makeText(this, "📊 Daily app usage reset - fresh start!", Toast.LENGTH_SHORT).show();
+            Log.d(TAG, "Daily limits reset at midnight");
         }
     }
 
