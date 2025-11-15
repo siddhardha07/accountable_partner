@@ -18,11 +18,27 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.AppViewHolder> {
     private final Context context;
     private final List<AppModel> appList;
     private final List<AppModel> filteredAppList;
+    private boolean isPartnerMode = false;
+
+    public interface UnrestrictRequestListener {
+        void onUnrestrictRequested(String packageName, String appName);
+    }
+
+    private UnrestrictRequestListener unrestrictListener;
 
     public AppAdapter(Context context, List<AppModel> appList) {
         this.context = context;
         this.appList = appList != null ? appList : new ArrayList<>();
         this.filteredAppList = new ArrayList<>(this.appList);
+    }
+
+    public void setPartnerMode(boolean isPartnerMode) {
+        this.isPartnerMode = isPartnerMode;
+        notifyDataSetChanged();
+    }
+
+    public void setUnrestrictListener(UnrestrictRequestListener listener) {
+        this.unrestrictListener = listener;
     }
 
     @NonNull
@@ -44,16 +60,50 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.AppViewHolder> {
         holder.appCheckbox.setOnCheckedChangeListener(null);
         holder.appCheckbox.setChecked(item.isSelected());
 
-        holder.appCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            item.setSelected(isChecked);
-        });
+        if (isPartnerMode) {
+            // Partner mode: Full control over restrictions
+            holder.appCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                item.setSelected(isChecked);
+            });
 
-        // Optionally allow clicking the whole row to toggle
-        holder.itemView.setOnClickListener(v -> {
-            boolean newState = !item.isSelected();
-            item.setSelected(newState);
-            holder.appCheckbox.setChecked(newState);
-        });
+            holder.itemView.setOnClickListener(v -> {
+                boolean newState = !item.isSelected();
+                item.setSelected(newState);
+                holder.appCheckbox.setChecked(newState);
+            });
+        } else {
+            // User mode: Can ADD restrictions, but need partner approval to REMOVE
+            android.util.Log.d("AppAdapter", "Setting up user mode for: " + item.getAppName());
+            holder.appCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                android.util.Log.d("AppAdapter", "Checkbox changed for " + item.getAppName() + " isChecked: " + isChecked);
+                if (isChecked) {
+                    // Allow adding new restrictions
+                    item.setSelected(true);
+                } else {
+                    // Prevent removing restrictions - revert and request partner approval
+                    android.util.Log.d("AppAdapter", "User trying to uncheck " + item.getAppName() + ", reverting and calling listener");
+                    holder.appCheckbox.setChecked(true);
+                    if (unrestrictListener != null) {
+                        unrestrictListener.onUnrestrictRequested(item.getPackageName(), item.getAppName());
+                    } else {
+                        android.util.Log.w("AppAdapter", "unrestrictListener is null!");
+                    }
+                }
+            });
+
+            holder.itemView.setOnClickListener(v -> {
+                if (!item.isSelected()) {
+                    // Allow adding restriction
+                    item.setSelected(true);
+                    holder.appCheckbox.setChecked(true);
+                } else {
+                    // Request partner approval to remove restriction
+                    if (unrestrictListener != null) {
+                        unrestrictListener.onUnrestrictRequested(item.getPackageName(), item.getAppName());
+                    }
+                }
+            });
+        }
     }
 
     @Override

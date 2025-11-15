@@ -56,7 +56,7 @@
             android:textAlignment="center"
             android:lineSpacingExtra="4dp" />
 
-        <!-- Time Selection Card -->
+        <!-- Request Details Card -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -70,72 +70,42 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="20dp"
+                android:gravity="center">
 
+                <!-- App Name -->
                 <TextView
+                    android:id="@+id/appNameText"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="⏱️ Set Access Duration"
-                    android:textSize="16sp"
+                    android:text="Instagram"
+                    android:textSize="20sp"
                     android:textStyle="bold"
                     android:textColor="@android:color/black"
                     android:textAlignment="center"
-                    android:layout_marginBottom="16dp" />
+                    android:layout_marginBottom="8dp" />
 
-                <LinearLayout
+                <!-- Requested Time -->
+                <TextView
+                    android:id="@+id/requestedTimeText"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center">
+                    android:text="⏱️ Requested: 15m 30s"
+                    android:textSize="16sp"
+                    android:textColor="#FF9800"
+                    android:textAlignment="center"
+                    android:layout_marginBottom="8dp"
+                    android:textStyle="bold" />
 
-                    <!-- Minutes Section -->
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:gravity="center"
-                        android:layout_marginEnd="24dp">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Minutes"
-                            android:textSize="14sp"
-                            android:textColor="@android:color/darker_gray"
-                            android:layout_marginBottom="8dp" />
-
-                        <NumberPicker
-                            android:id="@+id/minutesPicker"
-                            android:layout_width="80dp"
-                            android:layout_height="120dp"
-                            android:theme="@style/NumberPickerTheme" />
-
-                    </LinearLayout>
-
-                    <!-- Seconds Section -->
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:gravity="center">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Seconds"
-                            android:textSize="14sp"
-                            android:textColor="@android:color/darker_gray"
-                            android:layout_marginBottom="8dp" />
-
-                        <NumberPicker
-                            android:id="@+id/secondsPicker"
-                            android:layout_width="80dp"
-                            android:layout_height="120dp"
-                            android:theme="@style/NumberPickerTheme" />
-
-                    </LinearLayout>
-
-                </LinearLayout>
+                <!-- Request Time -->
+                <TextView
+                    android:id="@+id/requestTimeText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="📅 Requested at 2:30 PM"
+                    android:textSize="14sp"
+                    android:textColor="@android:color/darker_gray"
+                    android:textAlignment="center" />
 
             </LinearLayout>
 

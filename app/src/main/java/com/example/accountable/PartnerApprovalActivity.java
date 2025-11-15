@@ -4,7 +4,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.NumberPicker;
+
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -30,10 +30,13 @@ public class PartnerApprovalActivity extends AppCompatActivity {
 
     private TextView titleText;
     private TextView messageText;
+    private TextView appNameText;
+    private TextView requestedTimeText;
+    private TextView requestTimeText;
     private Button allowButton;
     private Button denyButton;
-    private NumberPicker minutesPicker;
-    private NumberPicker secondsPicker;
+
+    private long userRequestedSeconds = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,39 +59,39 @@ public class PartnerApprovalActivity extends AppCompatActivity {
         requesterName = getIntent().getStringExtra("requesterName");
         appName = getIntent().getStringExtra("appName");
         requestTime = getIntent().getStringExtra("requestTime");
+        userRequestedSeconds = getIntent().getLongExtra("requestedSeconds", 0);
 
         Log.d(TAG, "Approval request: " + requestId + " for " + appName + " from " + requesterName);
 
         // Initialize views
         initializeViews();
         setupClickListeners();
-        displayRequestInfo();
+
+        // Load full request data from Firebase to get request type
+        loadRequestData();
     }
 
     private void initializeViews() {
         titleText = findViewById(R.id.titleText);
         messageText = findViewById(R.id.messageText);
+        appNameText = findViewById(R.id.appNameText);
+        requestedTimeText = findViewById(R.id.requestedTimeText);
+        requestTimeText = findViewById(R.id.requestTimeText);
         allowButton = findViewById(R.id.allowButton);
         denyButton = findViewById(R.id.denyButton);
-        minutesPicker = findViewById(R.id.minutesPicker);
-        secondsPicker = findViewById(R.id.secondsPicker);
-
-        // Setup NumberPickers
-        setupNumberPickers();
     }
 
-    private void setupNumberPickers() {
-        // Minutes picker (0-60 minutes)
-        minutesPicker.setMinValue(0);
-        minutesPicker.setMaxValue(60);
-        minutesPicker.setValue(5); // Default 5 minutes
-        minutesPicker.setWrapSelectorWheel(true);
+    private String formatTimeDescription(long totalSeconds) {
+        long minutes = totalSeconds / 60;
+        long seconds = totalSeconds % 60;
 
-        // Seconds picker (0-59 seconds)
-        secondsPicker.setMinValue(0);
-        secondsPicker.setMaxValue(59);
-        secondsPicker.setValue(0); // Default 0 seconds
-        secondsPicker.setWrapSelectorWheel(true);
+        if (minutes > 0 && seconds > 0) {
+            return minutes + "m " + seconds + "s";
+        } else if (minutes > 0) {
+            return minutes + " minutes";
+        } else {
+            return seconds + " seconds";
+        }
     }
 
     private void setupClickListeners() {
@@ -96,17 +99,59 @@ public class PartnerApprovalActivity extends AppCompatActivity {
         denyButton.setOnClickListener(v -> handleApproval(false));
     }
 
-    private void displayRequestInfo() {
-        titleText.setText("Access Request");
+    private void loadRequestData() {
+        if (requestId != null) {
+            db.collection("requests").document(requestId)
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        String requestType = documentSnapshot.getString("requestType");
+                        displayRequestInfo(requestType);
+                    } else {
+                        displayRequestInfo(null);
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    displayRequestInfo(null);
+                });
+        } else {
+            displayRequestInfo(null);
+        }
+    }
 
-        String message = String.format(
-            "%s wants to access %s\n\nRequested at: %s\n\nDo you want to allow access?",
-            requesterName != null ? requesterName : "Someone",
-            appName != null ? appName : "a restricted app",
-            requestTime != null ? requestTime : "just now"
-        );
+    private void displayRequestInfo(String requestType) {
+        boolean isUnrestrictRequest = "UNRESTRICT_APP".equals(requestType);
 
-        messageText.setText(message);
+        if (isUnrestrictRequest) {
+            // Unrestrict request
+            titleText.setText("Unrestrict Request");
+            messageText.setText((requesterName != null ? requesterName : "Someone") + " wants to remove restrictions from:");
+
+            // Hide time information for unrestrict requests
+            if (requestedTimeText != null) {
+                requestedTimeText.setText("📋 Type: Remove from restrictions");
+            }
+        } else {
+            // Regular access request
+            titleText.setText("Access Request");
+            messageText.setText((requesterName != null ? requesterName : "Someone") + " wants to access:");
+
+            // Show time information for access requests
+            if (requestedTimeText != null && userRequestedSeconds > 0) {
+                String timeDescription = formatTimeDescription(userRequestedSeconds);
+                requestedTimeText.setText("⏱️ Requested: " + timeDescription);
+            }
+        }
+
+        // Display app name (same for both types)
+        if (appNameText != null) {
+            appNameText.setText(appName != null ? appName : "Unknown App");
+        }
+
+        // Format and display request time
+        if (requestTimeText != null && requestTime != null) {
+            requestTimeText.setText("📅 Requested at " + requestTime);
+        }
     }
 
     private void handleApproval(boolean approved) {
@@ -122,10 +167,8 @@ public class PartnerApprovalActivity extends AppCompatActivity {
 
         Log.d(TAG, "Processing approval: " + approved + " for request: " + requestId);
 
-        // Get selected duration
-        int minutes = minutesPicker.getValue();
-        int seconds = secondsPicker.getValue();
-        int totalSeconds = (minutes * 60) + seconds;
+        // Use the user's requested duration (no AP time selection)
+        long totalSeconds = userRequestedSeconds;
 
         // Update the access request in Firestore
         Map<String, Object> response = new HashMap<>();
@@ -134,31 +177,47 @@ public class PartnerApprovalActivity extends AppCompatActivity {
         response.put("respondedAt", System.currentTimeMillis());
 
         if (approved && totalSeconds > 0) {
+            // Grant exactly what the user requested
             response.put("durationSeconds", totalSeconds);
+            response.put("grantedDuration", totalSeconds); // Use user's requested time
             response.put("accessExpiresAt", System.currentTimeMillis() + (totalSeconds * 1000));
         }
 
-        db.collection("accessRequests").document(requestId)
+        db.collection("requests").document(requestId)
                 .update(response)
                 .addOnSuccessListener(aVoid -> {
-                    Log.d(TAG, "Access request " + (approved ? "approved" : "denied"));
+                    // Check if this is an unrestrict request or access request
+                    db.collection("requests").document(requestId).get()
+                        .addOnSuccessListener(documentSnapshot -> {
+                            String requestType = documentSnapshot.getString("requestType");
+                            boolean isUnrestrictRequest = "UNRESTRICT_APP".equals(requestType);
 
-                    String message;
-                    if (approved && totalSeconds > 0) {
-                        String timeStr = minutes > 0 ?
-                            String.format("%dm %ds", minutes, seconds) :
-                            String.format("%d seconds", seconds);
-                        message = String.format("✅ Access granted to %s for %s", requesterName, timeStr);
-                    } else if (approved) {
-                        message = "✅ Access granted to " + requesterName;
-                    } else {
-                        message = "❌ Access denied to " + requesterName;
-                    }
+                            Log.d(TAG, "Request " + (approved ? "approved" : "denied") + " - Type: " + requestType);
 
-                    Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+                            String message;
+                            if (approved) {
+                                if (isUnrestrictRequest) {
+                                    message = String.format("✅ Approved removing %s from restrictions for %s", appName, requesterName);
+                                } else if (totalSeconds > 0) {
+                                    String timeDescription = formatTimeDescription(totalSeconds);
+                                    message = String.format("✅ Granted %s access to %s for %s", requesterName, appName, timeDescription);
+                                } else {
+                                    message = String.format("✅ Granted %s access to %s", requesterName, appName);
+                                }
+                            } else {
+                                if (isUnrestrictRequest) {
+                                    message = String.format("❌ Denied removing %s from restrictions for %s", appName, requesterName);
+                                } else {
+                                    message = String.format("❌ Denied %s access to %s", requesterName, appName);
+                                }
+                            }
 
-                    // Close the activity
-                    finish();
+                            Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+                            android.util.Log.d(TAG, "Partner response sent: " + message);
+
+                            // Close the activity
+                            finish();
+                        });
                 })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "Failed to update access request", e);

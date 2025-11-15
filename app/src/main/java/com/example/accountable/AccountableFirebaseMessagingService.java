@@ -49,9 +49,19 @@ public class AccountableFirebaseMessagingService extends FirebaseMessagingServic
             String userName = remoteMessage.getData().get("userName");
             String appName = remoteMessage.getData().get("appName");
             String requestId = remoteMessage.getData().get("requestId");
+            String requestedSecondsStr = remoteMessage.getData().get("requestedSeconds");
 
-            Log.d("FCM", "Received access request from " + userName + " for " + appName);
-            showNotification(userName, appName, requestId);
+            long requestedSeconds = 0;
+            if (requestedSecondsStr != null) {
+                try {
+                    requestedSeconds = Long.parseLong(requestedSecondsStr);
+                } catch (NumberFormatException e) {
+                    Log.e("FCM", "Failed to parse requestedSeconds: " + requestedSecondsStr, e);
+                }
+            }
+
+            Log.d("FCM", "Received access request from " + userName + " for " + appName + " (" + requestedSeconds + " seconds)");
+            showNotification(userName, appName, requestId, requestedSeconds);
         }
     }
 
@@ -68,13 +78,14 @@ public class AccountableFirebaseMessagingService extends FirebaseMessagingServic
         }
     }
 
-    private void showNotification(String userName, String appName, String requestId) {
+    private void showNotification(String userName, String appName, String requestId, long requestedSeconds) {
         // Create intent for PartnerApprovalActivity
         Intent intent = new Intent(this, PartnerApprovalActivity.class);
         intent.putExtra("requestId", requestId);
         intent.putExtra("requesterName", userName);
         intent.putExtra("appName", appName);
         intent.putExtra("requestTime", new java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(new java.util.Date()));
+        intent.putExtra("requestedSeconds", requestedSeconds); // Pass the requested seconds
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
 
         PendingIntent pendingIntent = PendingIntent.getActivity(

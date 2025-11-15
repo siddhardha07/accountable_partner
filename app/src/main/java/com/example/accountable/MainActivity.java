@@ -227,8 +227,9 @@ public class MainActivity extends AppCompatActivity {
                                                 String requesterName = document.getString("userName");
                                                 String appName = document.getString("appName");
                                                 String requestId = document.getString("requestId");
+                                                Long requestedSeconds = document.getLong("requestedSeconds");
 
-                                                showAccessRequestNotification(requestId, requesterName, appName);
+                                                showAccessRequestNotification(requestId, requesterName, appName, requestedSeconds != null ? requestedSeconds : 0L);
 
                                                 // Mark notification as delivered
                                                 document.getReference().update("status", "delivered");
@@ -240,12 +241,14 @@ public class MainActivity extends AppCompatActivity {
                 });
     }
 
-    private void showAccessRequestNotification(String requestId, String requesterName, String appName) {
+    private void showAccessRequestNotification(String requestId, String requesterName, String appName, long requestedSeconds) {
         // Create intent that opens PartnerApprovalActivity
         Intent intent = new Intent(this, PartnerApprovalActivity.class);
         intent.putExtra("requestId", requestId);
         intent.putExtra("requesterName", requesterName);
         intent.putExtra("appName", appName);
+        intent.putExtra("requestedSeconds", requestedSeconds); // Pass the requested seconds
+        intent.putExtra("requestTime", new java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(new java.util.Date()));
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
 
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent,

@@ -84,21 +84,34 @@ public class AppBlockedActivity extends AppCompatActivity {
     private void requestPartnerAccess() {
         if (currentUserId == null) return;
 
-        // Get user's main partner
-        db.collection("users").document(currentUserId)
-                .get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    String partnerId = documentSnapshot.getString("mainPartnerId");
-                    if (partnerId != null) {
-                        sendAccessRequest(partnerId);
-                    }
-                })
-                .addOnFailureListener(e -> {
-                    // Handle error
-                });
+        // Show time selection dialog first
+        TimeSelectionDialog.show(this, new TimeSelectionDialog.TimeSelectionListener() {
+            @Override
+            public void onTimeSelected(long totalSeconds) {
+                // Time selected, now get partner and send request
+                db.collection("users").document(currentUserId)
+                        .get()
+                        .addOnSuccessListener(documentSnapshot -> {
+                            String partnerId = documentSnapshot.getString("mainPartnerId");
+                            if (partnerId != null) {
+                                sendAccessRequest(partnerId, totalSeconds);
+                            }
+                        })
+                        .addOnFailureListener(e -> {
+                            // Handle error
+                        });
+            }
+
+            @Override
+            public void onCancelled() {
+                // User cancelled time selection
+            }
+        });
     }
 
-    private void sendAccessRequest(String partnerId) {
+    private void sendAccessRequest(String partnerId, long requestedSeconds) {
+        android.util.Log.d("AppBlockedActivity", "sendAccessRequest called with requestedSeconds: " + requestedSeconds);
+
         // Get user's name first
         db.collection("users").document(currentUserId)
                 .get()
@@ -107,30 +120,32 @@ public class AppBlockedActivity extends AppCompatActivity {
                     final String finalUserName = (userName == null) ? "Someone" : userName;
                     final String finalAppName = appName;
 
-                    // Create access request in Firestore
-                    java.util.Map<String, Object> request = new java.util.HashMap<>();
-                    request.put("userId", currentUserId);
-                    request.put("partnerId", partnerId);
-                    request.put("appPackage", packageName);
-                    request.put("appName", finalAppName);
-                    request.put("userName", finalUserName);
-                    request.put("requestType", "temporary_access");
-                    request.put("timestamp", System.currentTimeMillis());
-                    request.put("status", "pending");
+                    // Create enhanced access request using new AccessRequest class
+                    String timeDescription = formatTimeDescription(requestedSeconds);
+                    android.util.Log.d("AppBlockedActivity", "Creating AccessRequest with " + requestedSeconds + " seconds (" + timeDescription + ")");
+                    AccessRequest accessRequest = new AccessRequest(
+                        currentUserId,
+                        finalUserName,
+                        packageName,
+                        finalAppName,
+                        "APP_ACCESS",
+                        requestedSeconds,
+                        "User requested " + timeDescription + " of access"
+                    );
 
-                    db.collection("accessRequests")
-                            .add(request)
-                            .addOnSuccessListener(documentReference -> {
-                                String requestId = documentReference.getId();
-
+                    // Save AccessRequest to Firebase using the new structure
+                    db.collection("requests").document(accessRequest.getRequestId())
+                            .set(accessRequest)
+                            .addOnSuccessListener(aVoid -> {
                                 // Send FCM notification to partner
-                                sendNotificationToPartner(partnerId, finalUserName, finalAppName, requestId);
+                                sendNotificationToPartner(partnerId, finalUserName, finalAppName,
+                                    accessRequest.getRequestId(), requestedSeconds);
 
-                                requestAccessButton.setText("Request Sent ✓");
+                                requestAccessButton.setText("Request Sent ✓ (" + timeDescription + ")");
                                 requestAccessButton.setEnabled(false);
 
                                 // Start monitoring for response
-                                monitorRequestResponse(requestId);
+                                monitorRequestResponse(accessRequest.getRequestId());
                             })
                             .addOnFailureListener(e -> {
                                 // Handle error
@@ -139,7 +154,7 @@ public class AppBlockedActivity extends AppCompatActivity {
                 });
     }
 
-    private void sendNotificationToPartner(String partnerId, String userName, String appName, String requestId) {
+    private void sendNotificationToPartner(String partnerId, String userName, String appName, String requestId, long requestedSeconds) {
         // Get partner's FCM token
         db.collection("users").document(partnerId)
                 .get()
@@ -147,7 +162,7 @@ public class AppBlockedActivity extends AppCompatActivity {
                     String fcmToken = partnerDoc.getString("fcmToken");
                     if (fcmToken != null) {
                         // Send actual FCM notification using HTTP API
-                        sendFCMNotification(fcmToken, userName, appName, requestId);
+                        sendFCMNotification(fcmToken, userName, appName, requestId, requestedSeconds);
                     } else {
                         Log.w("FCM", "Partner FCM token not found for user: " + partnerId);
                     }
@@ -157,14 +172,18 @@ public class AppBlockedActivity extends AppCompatActivity {
                 });
     }
 
-    private void sendFCMNotification(String fcmToken, String userName, String appName, String requestId) {
+    private void sendFCMNotification(String fcmToken, String userName, String appName, String requestId, long requestedSeconds) {
         // Create a simple in-app notification approach since FCM HTTP requires server key
         // Instead, let's use a Firestore-based notification that the partner app can listen to
+        String timeDescription = formatTimeDescription(requestedSeconds);
         java.util.Map<String, Object> notificationData = new java.util.HashMap<>();
         notificationData.put("fcmToken", fcmToken);
         notificationData.put("requestId", requestId);
         notificationData.put("userName", userName);
         notificationData.put("appName", appName);
+        notificationData.put("requestedSeconds", requestedSeconds);
+        notificationData.put("timeDescription", timeDescription);
+        notificationData.put("message", userName + " wants " + appName + " access for " + timeDescription);
         notificationData.put("type", "access_request");
         notificationData.put("timestamp", System.currentTimeMillis());
         notificationData.put("status", "pending");
@@ -181,7 +200,7 @@ public class AppBlockedActivity extends AppCompatActivity {
 
     private void monitorRequestResponse(String requestId) {
         // Listen for real-time updates to the access request
-        db.collection("accessRequests").document(requestId)
+        db.collection("requests").document(requestId)
                 .addSnapshotListener((documentSnapshot, error) -> {
                     if (documentSnapshot != null && documentSnapshot.exists()) {
                         String status = documentSnapshot.getString("status");
@@ -236,6 +255,19 @@ public class AppBlockedActivity extends AppCompatActivity {
         homeIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(homeIntent);
         finish();
+    }
+
+    private String formatTimeDescription(long totalSeconds) {
+        long minutes = totalSeconds / 60;
+        long seconds = totalSeconds % 60;
+
+        if (minutes > 0 && seconds > 0) {
+            return minutes + "m " + seconds + "s";
+        } else if (minutes > 0) {
+            return minutes + " minutes";
+        } else {
+            return seconds + " seconds";
+        }
     }
 
     @Override
