@@ -4,8 +4,11 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -29,11 +32,14 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static final String NOTIFICATION_CHANNEL_ID = "access_requests";
     private static final int NOTIFICATION_PERMISSION_REQUEST_CODE = 1001;
+
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
     private ListenerRegistration accessRequestListener;
     private android.os.Handler listenerHealthHandler;
     private Runnable listenerHealthCheck;
+    private boolean waitingForOverlayPermission = false;
+    private boolean waitingForUsageStatsPermission = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -157,12 +163,16 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    @Override
+        @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == NOTIFICATION_PERMISSION_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
                 Toast.makeText(this, "✅ Notification permission granted!", Toast.LENGTH_SHORT).show();
+                // Request next permission after a short delay
+                new android.os.Handler().postDelayed(() -> {
+                    requestOverlayPermission();
+                }, 1000);
             } else {
                 Toast.makeText(this, "❌ Notification permission denied. You won't receive access requests.", Toast.LENGTH_LONG).show();
             }
@@ -209,8 +219,6 @@ public class MainActivity extends AppCompatActivity {
                                 .whereEqualTo("status", "pending")
                                 .addSnapshotListener((snapshots, e) -> {
                                     if (e != null) {
-                                        Log.w(TAG, "Notification listener failed: " + e.getMessage());
-
                                         // Silent reconnect after delay
                                         new android.os.Handler().postDelayed(() -> {
                                             accessRequestListener = null;
@@ -266,8 +274,6 @@ public class MainActivity extends AppCompatActivity {
 
         NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         notificationManager.notify((int) System.currentTimeMillis(), builder.build());
-
-        Log.d(TAG, "Notification shown for request: " + requestId);
     }
 
     @Override
@@ -275,6 +281,21 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         if (accessRequestListener == null) {
             setupAccessRequestListener();
+        }
+
+        // Handle permission flow continuation
+        if (waitingForOverlayPermission) {
+            waitingForOverlayPermission = false;
+            // After overlay permission, request usage stats permission
+            new Handler().postDelayed(() -> {
+                requestUsageStatsPermission();
+            }, 1000);
+        } else if (waitingForUsageStatsPermission) {
+            waitingForUsageStatsPermission = false;
+            // After usage stats permission, request accessibility permission
+            new Handler().postDelayed(() -> {
+                requestAccessibilityPermission();
+            }, 1000);
         }
     }
 
@@ -291,6 +312,29 @@ public class MainActivity extends AppCompatActivity {
         if (accessRequestListener != null) {
             accessRequestListener.remove();
         }
+    }
+
+    // Simple permission requests - just like requestNotificationPermission()
+
+    // Individual permission methods - call them separately as needed
+
+    public void requestOverlayPermission() {
+        waitingForOverlayPermission = true;
+        Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+        intent.setData(android.net.Uri.parse("package:" + getPackageName()));
+        startActivity(intent);
+    }
+
+    public void requestUsageStatsPermission() {
+        waitingForUsageStatsPermission = true;
+        Intent intent = new Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS);
+        startActivity(intent);
+    }
+
+    public void requestAccessibilityPermission() {
+        Intent intent = new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS);
+        startActivity(intent);
+        Log.d(TAG, "✅ All permissions requested successfully: Notifications → Overlay → Usage Stats → Accessibility");
     }
 
 }
