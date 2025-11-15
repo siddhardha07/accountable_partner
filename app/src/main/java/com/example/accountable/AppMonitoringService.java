@@ -24,6 +24,7 @@ import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class AppMonitoringService extends AccessibilityService {
@@ -42,6 +43,7 @@ public class AppMonitoringService extends AccessibilityService {
     private Map<String, Long> appLimits = new ConcurrentHashMap<>(); // Daily limits in milliseconds
     private Map<String, Long> lastBlockTime = new ConcurrentHashMap<>(); // Track when apps were last blocked
     private Map<String, Long> temporaryAccessExpiry = new ConcurrentHashMap<>(); // Track temporary access expiry times
+    private Set<String> cachedBlockedApps = ConcurrentHashMap.newKeySet(); // Fast-access cache for blocked apps
 
     private Handler handler = new Handler(Looper.getMainLooper());
     private Runnable usageChecker;
@@ -119,11 +121,17 @@ public class AppMonitoringService extends AccessibilityService {
             return false;
         }
 
-        // First check if there's a temporary access grant that's still valid
-        if (hasValidTemporaryAccess(packageName)) {
-            return false; // Not blocked due to temporary access
+        // FAST PATH: Check cache first for immediate blocking decision
+        if (cachedBlockedApps.contains(packageName)) {
+            // Double-check temporary access quickly
+            if (hasValidTemporaryAccess(packageName)) {
+                cachedBlockedApps.remove(packageName); // Remove from cache if access granted
+                return false;
+            }
+            return true; // Blocked and no temporary access
         }
 
+        // SLOW PATH: Check if this app should be blocked and cache the result
         Long lastBlocked = lastBlockTime.get(packageName);
         if (lastBlocked == null) {
             return false;
@@ -131,9 +139,12 @@ public class AppMonitoringService extends AccessibilityService {
 
         boolean sameDay = isSameDay(lastBlocked, System.currentTimeMillis());
         boolean overLimit = isAppOverLimit(packageName);
-
-        // Check if it was blocked today and still within the same day
         boolean isBlocked = sameDay && overLimit;
+
+        // Cache the blocking decision for faster future lookups
+        if (isBlocked && !hasValidTemporaryAccess(packageName)) {
+            cachedBlockedApps.add(packageName);
+        }
 
         return isBlocked;
     }
@@ -178,8 +189,9 @@ public class AppMonitoringService extends AccessibilityService {
                         if (expiresAt != null && System.currentTimeMillis() < expiresAt) {
                             // Cache the expiry time
                             temporaryAccessExpiry.put(packageName, expiresAt);
-                            // Remove from blocked apps
+                            // Remove from blocked apps and clear cache
                             lastBlockTime.remove(packageName);
+                            cachedBlockedApps.remove(packageName);
 
                             // Show user-friendly message
                             handler.post(() -> {
@@ -247,22 +259,15 @@ public class AppMonitoringService extends AccessibilityService {
     private void blockAppImmediately(String packageName) {
         // Double-check if this app should still be blocked (might have temporary access)
         if (hasValidTemporaryAccess(packageName)) {
-            Log.d(TAG, "🚫 Blocking cancelled - temporary access detected for " + packageName);
             return;
         }
 
         isBlocking = true;
 
-        // Force close the app by going to home screen
-        Intent homeIntent = new Intent(Intent.ACTION_MAIN);
-        homeIntent.addCategory(Intent.CATEGORY_HOME);
-        homeIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        startActivity(homeIntent);
+        // IMMEDIATELY show the block screen - this will stay on top
+        showBlockScreenImmediately(packageName);
 
-        // Show immediate blocking message
-        showPersistentBlockMessage(packageName);
-
-        // Schedule repeated blocking enforcement
+        // Schedule repeated blocking enforcement to keep it blocked
         scheduleBlockEnforcement(packageName);
 
         isBlocking = false;
@@ -383,10 +388,10 @@ public class AppMonitoringService extends AccessibilityService {
     }
 
     private void blockApp(String packageName, long usedTime, long limit) {
-        Log.d(TAG, "Blocking app: " + packageName + ". Used: " + (usedTime/60000) + "min, Limit: " + (limit/60000) + "min");
 
-        // Mark app as blocked
+        // Mark app as blocked and add to cache for fast future blocking
         lastBlockTime.put(packageName, System.currentTimeMillis());
+        cachedBlockedApps.add(packageName);
 
         // Close the app by going to home screen
         Intent homeIntent = new Intent(Intent.ACTION_MAIN);
@@ -417,20 +422,22 @@ public class AppMonitoringService extends AccessibilityService {
             public void run() {
                 if (attempts >= maxAttempts) return;
 
-                // Check if app still needs blocking (respects temporary access)
-                if (currentForegroundApp.equals(packageName) && isAppCurrentlyBlocked(packageName)) {
-                    Log.d(TAG, "Re-blocking persistent app: " + packageName);
-                    blockAppImmediately(packageName);
-                } else if (currentForegroundApp.equals(packageName) && hasValidTemporaryAccess(packageName)) {
-                    Log.d(TAG, "Stopping block enforcement - temporary access active for: " + packageName);
-                    return; // Stop the enforcement loop
+                // Check if the restricted app is in foreground and still needs blocking
+                if (currentForegroundApp.equals(packageName)) {
+                    if (isAppCurrentlyBlocked(packageName)) {
+                        Log.d(TAG, "Re-blocking persistent app: " + packageName);
+                        blockAppImmediately(packageName);
+                    } else if (hasValidTemporaryAccess(packageName)) {
+                        Log.d(TAG, "Stopping block enforcement - temporary access active for: " + packageName);
+                        return; // Stop the enforcement loop
+                    }
                 }
 
                 attempts++;
-                handler.postDelayed(this, 5000); // Check every 5 seconds
+                handler.postDelayed(this, 1000); // Check every 1 second for faster response
             }
         };
-        handler.postDelayed(blockEnforcer, 5000);
+        handler.postDelayed(blockEnforcer, 1000);
     }
 
     private void cancelBlockEnforcement() {
@@ -438,6 +445,26 @@ public class AppMonitoringService extends AccessibilityService {
             handler.removeCallbacks(blockEnforcer);
             Log.d(TAG, "🛑 Block enforcement cancelled");
         }
+    }
+
+    private void showBlockScreenImmediately(String packageName) {
+        String appName = getAppName(packageName);
+        long usedTime = totalUsageToday.getOrDefault(packageName, 0L);
+        long limit = appLimits.getOrDefault(packageName, 0L);
+
+        // Show the blocking screen activity with HIGH PRIORITY flags for instant display
+        Intent blockIntent = new Intent(this, AppBlockedActivity.class);
+        blockIntent.putExtra("packageName", packageName);
+        blockIntent.putExtra("appName", appName);
+        blockIntent.putExtra("usedTime", usedTime);
+        blockIntent.putExtra("timeLimit", limit);
+        blockIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
+                           Intent.FLAG_ACTIVITY_CLEAR_TOP |
+                           Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS |
+                           Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT |
+                           Intent.FLAG_ACTIVITY_NO_HISTORY |
+                           Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        startActivity(blockIntent);
     }
 
     private void showPersistentBlockMessage(String packageName) {
@@ -689,6 +716,7 @@ public class AppMonitoringService extends AccessibilityService {
                                     // Cache the temporary access
                                     temporaryAccessExpiry.put(packageName, expiresAt);
                                     lastBlockTime.remove(packageName);
+                                    cachedBlockedApps.remove(packageName);
 
                                     // Stop any active blocking enforcement for this app
                                     cancelBlockEnforcement();
