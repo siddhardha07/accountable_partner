@@ -11,7 +11,6 @@ import android.view.MenuItem;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.SearchView;
 import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -27,8 +26,7 @@ public class MyAppsActivity extends AppCompatActivity {
 
     private RecyclerView recyclerView;
     private AppAdapter adapter;
-    private List<AppModel> appList = new ArrayList<>();
-    private List<AppModel> originalAppList = new ArrayList<>(); // For search filtering
+    private List<AppModel> appList;
     private FirebaseFirestore db;
 
     @Override
@@ -80,10 +78,6 @@ public class MyAppsActivity extends AppCompatActivity {
             }
         }
 
-        // Store original list for search functionality
-        originalAppList.clear();
-        originalAppList.addAll(appList);
-
         // Show how many launchable apps we found
         Toast.makeText(this, "Found " + appList.size() + " launchable apps", Toast.LENGTH_SHORT).show();
     }
@@ -93,25 +87,6 @@ public class MyAppsActivity extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_my_apps, menu);
-
-        // Setup search functionality
-        MenuItem searchItem = menu.findItem(R.id.action_search);
-        SearchView searchView = (SearchView) searchItem.getActionView();
-
-        searchView.setQueryHint("Search apps...");
-        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
-            @Override
-            public boolean onQueryTextSubmit(String query) {
-                return false;
-            }
-
-            @Override
-            public boolean onQueryTextChange(String newText) {
-                filterApps(newText);
-                return true;
-            }
-        });
-
         return true;
     }
 
@@ -127,10 +102,10 @@ public class MyAppsActivity extends AppCompatActivity {
     private void saveSelectedAppsToFirestore() {
         List<String> selectedPackages = adapter.getSelectedPackageNames();
 
-        // Allow saving empty list - user might want to disable all restrictions
-        String message = selectedPackages.isEmpty() ?
-            "Clearing all app restrictions..." :
-            "Saving " + selectedPackages.size() + " apps...";
+        if (selectedPackages.isEmpty()) {
+            Toast.makeText(this, "No apps selected to save!", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         // Build a simple serializable structure
         Map<String, Object> data = new HashMap<>();
@@ -146,17 +121,12 @@ public class MyAppsActivity extends AppCompatActivity {
         String userId = currentUser.getUid();
 
         // Show saving feedback
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Saving " + selectedPackages.size() + " apps...", Toast.LENGTH_SHORT).show();
 
         db.collection("users").document(userId)
                 .update(data)  // Use update() instead of set() to preserve other fields
                 .addOnSuccessListener(aVoid -> {
-                    String successMessage = selectedPackages.isEmpty() ?
-                        "✅ All app restrictions cleared!" :
-                        "✅ Saved " + selectedPackages.size() + " restricted apps!";
-                    Toast.makeText(MyAppsActivity.this, successMessage, Toast.LENGTH_SHORT).show();
-                    // Navigate back to MainActivity after successful save
-                    finish();
+                    Toast.makeText(MyAppsActivity.this, "✅ Saved " + selectedPackages.size() + " restricted apps!", Toast.LENGTH_LONG).show();
                 })
                 .addOnFailureListener(e -> {
                     Toast.makeText(MyAppsActivity.this, "❌ Save failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
@@ -192,27 +162,6 @@ public class MyAppsActivity extends AppCompatActivity {
                 .addOnFailureListener(e -> {
                     Toast.makeText(MyAppsActivity.this, "Failed to load selections: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
-    }
-
-    private void filterApps(String query) {
-        List<AppModel> filteredList = new ArrayList<>();
-
-        if (query.isEmpty()) {
-            // Show all apps if search is empty
-            filteredList.addAll(originalAppList);
-        } else {
-            // Filter apps based on name
-            for (AppModel app : originalAppList) {
-                if (app.getAppName().toLowerCase().contains(query.toLowerCase())) {
-                    filteredList.add(app);
-                }
-            }
-        }
-
-        // Update the adapter with filtered list
-        appList.clear();
-        appList.addAll(filteredList);
-        adapter.notifyDataSetChanged();
     }
 
     @Override
