@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/background_light">
+
+    <!-- Header with Search Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@color/surface_white">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Partners"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="normal"
+                android:fontFamily="sans-serif-medium" />
+
+            <!-- Search Bar in Top Right -->
+            <androidx.appcompat.widget.SearchView
+                android:id="@+id/searchView"
+                android:layout_width="200dp"
+                android:layout_height="36dp"
+                android:background="@drawable/search_background"
+                app:iconifiedByDefault="false"
+                app:queryHint="Search partners..."
+                app:closeIcon="@drawable/ic_arrow_forward"
+                app:searchIcon="@drawable/ic_partners" />
+
+        </LinearLayout>
+
+        <!-- Bottom Border -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/text_tertiary"
+            android:alpha="0.3" />
+
+    </LinearLayout>
+
+
+
+    <!-- Partners RecyclerView (hidden for now, will replace sample cards when loaded) -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/partnersRecyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:scrollbars="vertical"
+        android:visibility="gone" />
+
+    <!-- Empty State -->
+    <LinearLayout
+        android:id="@+id/emptyStateLayout"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="32dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="No accountability partners yet"
+            android:textColor="@color/text_secondary"
+            android:textSize="16sp"
+            style="@style/BodyTextStyle"
+            android:gravity="center" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Connect with partners to stay accountable"
+            android:textColor="@color/text_tertiary"
+            android:textSize="14sp"
+            style="@style/BodyTextStyle"
+            android:gravity="center" />
+
+    </LinearLayout>
+
+    <!-- Add Partner FAB -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/addPartnerFab"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            android:layout_gravity="bottom|end"
+            android:src="@drawable/ic_partners"
+            app:tint="@color/surface_white"
+            app:backgroundTint="@color/success_blue" />
+
+    </FrameLayout>
+
+</LinearLayout>
