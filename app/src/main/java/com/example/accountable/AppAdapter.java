@@ -17,10 +17,12 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.AppViewHolder> {
 
     private final Context context;
     private final List<AppModel> appList;
+    private final List<AppModel> filteredAppList;
 
     public AppAdapter(Context context, List<AppModel> appList) {
         this.context = context;
         this.appList = appList != null ? appList : new ArrayList<>();
+        this.filteredAppList = new ArrayList<>(this.appList);
     }
 
     @NonNull
@@ -32,7 +34,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.AppViewHolder> {
 
     @Override
     public void onBindViewHolder(@NonNull AppViewHolder holder, int position) {
-        AppModel item = appList.get(position);
+        AppModel item = filteredAppList.get(position);
         holder.appName.setText(item.getAppName());
         Drawable icon = item.getIcon();
         if (icon != null) holder.appIcon.setImageDrawable(icon);
@@ -56,7 +58,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.AppViewHolder> {
 
     @Override
     public int getItemCount() {
-        return appList.size();
+        return filteredAppList.size();
     }
 
     // Helper to return selected package names
@@ -72,6 +74,25 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.AppViewHolder> {
     public void updateList(List<AppModel> newList) {
         appList.clear();
         appList.addAll(newList);
+        filteredAppList.clear();
+        filteredAppList.addAll(newList);
+        notifyDataSetChanged();
+    }
+
+    // Filter the list based on search query
+    public void filter(String query) {
+        filteredAppList.clear();
+        if (query.isEmpty()) {
+            filteredAppList.addAll(appList);
+        } else {
+            String lowerCaseQuery = query.toLowerCase().trim();
+            for (AppModel app : appList) {
+                if (app.getAppName().toLowerCase().contains(lowerCaseQuery) ||
+                    app.getPackageName().toLowerCase().contains(lowerCaseQuery)) {
+                    filteredAppList.add(app);
+                }
+            }
+        }
         notifyDataSetChanged();
     }
 

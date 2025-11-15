@@ -87,6 +87,29 @@ public class MyAppsActivity extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_my_apps, menu);
+        
+        // Setup search functionality in toolbar
+        MenuItem searchItem = menu.findItem(R.id.action_search);
+        androidx.appcompat.widget.SearchView searchView = (androidx.appcompat.widget.SearchView) searchItem.getActionView();
+        
+        if (searchView != null) {
+            searchView.setQueryHint("Search apps...");
+            searchView.setOnQueryTextListener(new androidx.appcompat.widget.SearchView.OnQueryTextListener() {
+                @Override
+                public boolean onQueryTextSubmit(String query) {
+                    return false;
+                }
+
+                @Override
+                public boolean onQueryTextChange(String newText) {
+                    if (adapter != null) {
+                        adapter.filter(newText);
+                    }
+                    return true;
+                }
+            });
+        }
+        
         return true;
     }
 
@@ -102,11 +125,7 @@ public class MyAppsActivity extends AppCompatActivity {
     private void saveSelectedAppsToFirestore() {
         List<String> selectedPackages = adapter.getSelectedPackageNames();
 
-        if (selectedPackages.isEmpty()) {
-            Toast.makeText(this, "No apps selected to save!", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
+        // Allow saving even if no apps are selected (user wants to unrestrict all apps)
         // Build a simple serializable structure
         Map<String, Object> data = new HashMap<>();
         data.put("selectedApps", selectedPackages);
@@ -121,12 +140,23 @@ public class MyAppsActivity extends AppCompatActivity {
         String userId = currentUser.getUid();
 
         // Show saving feedback
-        Toast.makeText(this, "Saving " + selectedPackages.size() + " apps...", Toast.LENGTH_SHORT).show();
+        if (selectedPackages.isEmpty()) {
+            Toast.makeText(this, "Saving... (Removing all restrictions)", Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(this, "Saving " + selectedPackages.size() + " apps...", Toast.LENGTH_SHORT).show();
+        }
 
         db.collection("users").document(userId)
                 .update(data)  // Use update() instead of set() to preserve other fields
                 .addOnSuccessListener(aVoid -> {
-                    Toast.makeText(MyAppsActivity.this, "✅ Saved " + selectedPackages.size() + " restricted apps!", Toast.LENGTH_LONG).show();
+                    if (selectedPackages.isEmpty()) {
+                        Toast.makeText(MyAppsActivity.this, "✅ All app restrictions removed!", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(MyAppsActivity.this, "✅ Saved " + selectedPackages.size() + " restricted apps!", Toast.LENGTH_SHORT).show();
+                    }
+                    
+                    // Auto-navigate back to MainActivity after successful save
+                    finish();
                 })
                 .addOnFailureListener(e -> {
                     Toast.makeText(MyAppsActivity.this, "❌ Save failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
