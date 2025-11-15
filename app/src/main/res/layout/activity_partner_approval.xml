@@ -50,7 +50,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="32dp"
-            android:text="Someone wants to access a restricted app"
+            android:text="Access request pending..."
             android:textSize="16sp"
             android:textColor="@android:color/darker_gray"
             android:textAlignment="center"

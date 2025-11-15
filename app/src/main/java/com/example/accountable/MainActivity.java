@@ -334,7 +334,7 @@ public class MainActivity extends AppCompatActivity {
     public void requestAccessibilityPermission() {
         Intent intent = new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS);
         startActivity(intent);
-        Log.d(TAG, "✅ All permissions requested successfully: Notifications → Overlay → Usage Stats → Accessibility");
+
     }
 
 }

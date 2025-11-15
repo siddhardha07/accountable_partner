@@ -54,10 +54,8 @@ public class MyAppsActivity extends AppCompatActivity {
 
         // Set partner mode - for now assume user mode, will implement partner detection later
         boolean isPartnerMode = false; // TODO: Implement proper partner detection
-        android.util.Log.d("MyAppsActivity", "Setting partner mode to: " + isPartnerMode);
         adapter.setPartnerMode(isPartnerMode);
         adapter.setUnrestrictListener(this::handleUnrestrictRequest);
-        android.util.Log.d("MyAppsActivity", "Unrestrict listener set successfully");
 
         recyclerView.setAdapter(adapter);
 
@@ -205,7 +203,7 @@ public class MyAppsActivity extends AppCompatActivity {
     }
 
     private void handleUnrestrictRequest(String packageName, String appName) {
-        android.util.Log.d("MyAppsActivity", "handleUnrestrictRequest called for: " + appName + " (" + packageName + ")");
+
 
         // Show confirmation dialog first
         new androidx.appcompat.app.AlertDialog.Builder(this)
@@ -283,7 +281,7 @@ public class MyAppsActivity extends AppCompatActivity {
                     // Save to notifications collection
                     db.collection("pendingNotifications").add(notificationData)
                         .addOnFailureListener(e -> {
-                            android.util.Log.e("MyApps", "Failed to save notification", e);
+
                         });
                 }
             });
@@ -313,13 +311,13 @@ public class MyAppsActivity extends AppCompatActivity {
                         String message = "✅ " + partnerName + " approved removing " + appName + " from restrictions";
                         showDetailedNotification("Request Approved", message, true);
 
-                        android.util.Log.d("MyAppsActivity", "Unrestrict request approved by " + partnerName + " for " + appName);
+
                     } else if ("denied".equals(status)) {
                         // Show detailed denial notification
                         String message = "❌ " + partnerName + " denied removing " + appName + " from restrictions";
                         showDetailedNotification("Request Denied", message, false);
 
-                        android.util.Log.d("MyAppsActivity", "Unrestrict request denied by " + partnerName + " for " + appName);
+
                     }
                 }
             });

@@ -64,21 +64,15 @@ public class AppMonitoringService extends AccessibilityService {
             if (event.getPackageName() != null) {
                 String packageName = event.getPackageName().toString();
 
-                Log.d(TAG, "🔍 APP DETECTED: " + packageName + " (Event: " + event.getEventType() + ")");
-
                 // Check if it's a system app
                 boolean isSystem = isSystemApp(packageName);
                 boolean isOurApp = packageName.equals(getPackageName());
 
-                Log.d(TAG, "📋 " + packageName + " - IsSystem: " + isSystem + ", IsOurApp: " + isOurApp);
-
                 // Ignore system apps and our own app
                 if (isSystem || isOurApp) {
-                    Log.d(TAG, "⏩ SKIPPING: " + packageName);
                     return;
                 }
 
-                Log.d(TAG, "📱 USER APP DETECTED: " + packageName + " - Processing...");
                 handleAppSwitch(packageName);
             }
         }
@@ -108,7 +102,6 @@ public class AppMonitoringService extends AccessibilityService {
 
         // Check if we're trying to open a blocked app
         if (isAppCurrentlyBlocked(newPackageName)) {
-            Log.d(TAG, "Blocked app attempted to open: " + newPackageName);
             blockAppImmediately(newPackageName);
             return; // Don't track this as a legitimate app switch
         }
@@ -117,48 +110,36 @@ public class AppMonitoringService extends AccessibilityService {
         currentForegroundApp = newPackageName;
         currentAppStartTime = currentTime;
 
-        Log.d(TAG, "App switched to: " + newPackageName);
-
         // Check if this app is restricted and if user has exceeded limits
         checkAppRestrictions(newPackageName);
     }
 
     private boolean isAppCurrentlyBlocked(String packageName) {
         if (currentUserId == null) {
-            Log.d(TAG, "❌ No currentUserId for blocking check");
             return false;
         }
 
-        Log.d(TAG, "🔍 Checking if " + packageName + " is currently blocked");
-
         // First check if there's a temporary access grant that's still valid
         if (hasValidTemporaryAccess(packageName)) {
-            Log.d(TAG, "✅ " + packageName + " has valid temporary access - NOT BLOCKED");
             return false; // Not blocked due to temporary access
         }
 
         Long lastBlocked = lastBlockTime.get(packageName);
         if (lastBlocked == null) {
-            Log.d(TAG, "📝 " + packageName + " was never blocked - NOT BLOCKED");
             return false;
         }
 
         boolean sameDay = isSameDay(lastBlocked, System.currentTimeMillis());
         boolean overLimit = isAppOverLimit(packageName);
 
-        Log.d(TAG, "📊 " + packageName + " - Same day: " + sameDay + ", Over limit: " + overLimit);
-
         // Check if it was blocked today and still within the same day
         boolean isBlocked = sameDay && overLimit;
-
-        Log.d(TAG, isBlocked ? "🚫 " + packageName + " IS BLOCKED" : "✅ " + packageName + " IS NOT BLOCKED");
 
         return isBlocked;
     }
 
     private boolean hasValidTemporaryAccess(String packageName) {
         if (currentUserId == null) {
-            Log.d(TAG, "❌ No currentUserId for temporary access check");
             return false;
         }
 
@@ -166,19 +147,12 @@ public class AppMonitoringService extends AccessibilityService {
         Long expiryTime = temporaryAccessExpiry.get(packageName);
         long currentTime = System.currentTimeMillis();
 
-        Log.d(TAG, "🔍 Checking temporary access for " + packageName +
-             " - Cached expiry: " + expiryTime + ", Current time: " + currentTime);
-
         if (expiryTime != null) {
             if (currentTime < expiryTime) {
-                long remainingSeconds = (expiryTime - currentTime) / 1000;
-                Log.d(TAG, "✅ Valid temporary access for " + packageName +
-                     " expires in " + remainingSeconds + " seconds");
                 return true;
             } else {
                 // Access expired, remove from cache
                 temporaryAccessExpiry.remove(packageName);
-                Log.d(TAG, "⏰ Temporary access expired for " + packageName);
 
                 // Clean up the Firestore document
                 if (db != null) {
@@ -187,8 +161,6 @@ public class AppMonitoringService extends AccessibilityService {
                             .delete();
                 }
             }
-        } else {
-            Log.d(TAG, "❌ No cached temporary access found for " + packageName);
         }
 
         return false;
@@ -196,8 +168,6 @@ public class AppMonitoringService extends AccessibilityService {
 
     public void refreshTemporaryAccess(String packageName) {
         if (currentUserId == null || db == null) return;
-
-        Log.d(TAG, "🔄 Refreshing temporary access for " + packageName);
 
         db.collection("users").document(currentUserId)
                 .collection("temporaryAccess").document(packageName)
@@ -210,9 +180,6 @@ public class AppMonitoringService extends AccessibilityService {
                             temporaryAccessExpiry.put(packageName, expiresAt);
                             // Remove from blocked apps
                             lastBlockTime.remove(packageName);
-
-                            Log.d(TAG, "✅ Temporary access cached for " + packageName +
-                                 " (expires in " + ((expiresAt - System.currentTimeMillis()) / 1000) + "s)");
 
                             // Show user-friendly message
                             handler.post(() -> {

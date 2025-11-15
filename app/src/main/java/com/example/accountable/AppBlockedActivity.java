@@ -110,19 +110,19 @@ public class AppBlockedActivity extends AppCompatActivity {
     }
 
     private void sendAccessRequest(String partnerId, long requestedSeconds) {
-        android.util.Log.d("AppBlockedActivity", "sendAccessRequest called with requestedSeconds: " + requestedSeconds);
+
 
         // Get user's name first
         db.collection("users").document(currentUserId)
                 .get()
                 .addOnSuccessListener(userDoc -> {
-                    String userName = userDoc.getString("name");
+                    String userName = userDoc.getString("displayName");
                     final String finalUserName = (userName == null) ? "Someone" : userName;
                     final String finalAppName = appName;
 
                     // Create enhanced access request using new AccessRequest class
                     String timeDescription = formatTimeDescription(requestedSeconds);
-                    android.util.Log.d("AppBlockedActivity", "Creating AccessRequest with " + requestedSeconds + " seconds (" + timeDescription + ")");
+
                     AccessRequest accessRequest = new AccessRequest(
                         currentUserId,
                         finalUserName,
@@ -212,7 +212,7 @@ public class AppBlockedActivity extends AppCompatActivity {
                             if (durationSeconds != null && accessExpiresAt != null) {
                                 // Save temporary access grant to SharedPreferences or Firestore
                                 saveTemporaryAccess(packageName, accessExpiresAt);
-                                Log.d("AppBlocked", "Access granted for " + durationSeconds + " seconds");
+
                             }
 
                             // Access approved - close blocking screen
@@ -241,7 +241,7 @@ public class AppBlockedActivity extends AppCompatActivity {
                     .collection("temporaryAccess").document(packageName)
                     .set(accessData)
                     .addOnSuccessListener(aVoid -> {
-                        Log.d("AppBlocked", "Temporary access saved for " + packageName);
+
                     })
                     .addOnFailureListener(e -> {
                         Log.e("AppBlocked", "Failed to save temporary access", e);

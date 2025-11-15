@@ -65,7 +65,7 @@ public class TimeSelectionDialog {
                     int seconds = secondsPicker.getValue();
                     long totalSeconds = (minutes * 60L) + seconds;
 
-                    android.util.Log.d("TimeSelectionDialog", "Selected: " + minutes + "m " + seconds + "s = " + totalSeconds + " total seconds");
+
 
                     if (totalSeconds > 0) {
                         listener.onTimeSelected(totalSeconds);

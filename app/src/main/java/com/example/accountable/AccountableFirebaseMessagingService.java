@@ -27,7 +27,7 @@ public class AccountableFirebaseMessagingService extends FirebaseMessagingServic
     @Override
     public void onNewToken(String token) {
         super.onNewToken(token);
-        Log.d("FCM", "New FCM Token: " + token);
+
 
         // Save token to user's Firestore document
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
@@ -36,8 +36,8 @@ public class AccountableFirebaseMessagingService extends FirebaseMessagingServic
                 .collection("users")
                 .document(currentUser.getUid())
                 .update("fcmToken", token)
-                .addOnSuccessListener(aVoid -> Log.d("FCM", "FCM token updated in Firestore"))
-                .addOnFailureListener(e -> Log.e("FCM", "Failed to update FCM token", e));
+                .addOnSuccessListener(aVoid -> {})
+                .addOnFailureListener(e -> {});
         }
     }
 
@@ -60,7 +60,7 @@ public class AccountableFirebaseMessagingService extends FirebaseMessagingServic
                 }
             }
 
-            Log.d("FCM", "Received access request from " + userName + " for " + appName + " (" + requestedSeconds + " seconds)");
+
             showNotification(userName, appName, requestId, requestedSeconds);
         }
     }

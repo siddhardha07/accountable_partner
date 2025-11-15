@@ -73,20 +73,15 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.AppViewHolder> {
             });
         } else {
             // User mode: Can ADD restrictions, but need partner approval to REMOVE
-            android.util.Log.d("AppAdapter", "Setting up user mode for: " + item.getAppName());
             holder.appCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                android.util.Log.d("AppAdapter", "Checkbox changed for " + item.getAppName() + " isChecked: " + isChecked);
                 if (isChecked) {
                     // Allow adding new restrictions
                     item.setSelected(true);
                 } else {
                     // Prevent removing restrictions - revert and request partner approval
-                    android.util.Log.d("AppAdapter", "User trying to uncheck " + item.getAppName() + ", reverting and calling listener");
                     holder.appCheckbox.setChecked(true);
                     if (unrestrictListener != null) {
                         unrestrictListener.onUnrestrictRequested(item.getPackageName(), item.getAppName());
-                    } else {
-                        android.util.Log.w("AppAdapter", "unrestrictListener is null!");
                     }
                 }
             });
