@@ -7,7 +7,7 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    
+
     <!-- Custom colors for the accountability app -->
     <color name="background_light">#FAFAFA</color>
     <color name="surface_white">#FFFFFF</color>

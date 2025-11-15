@@ -87,11 +87,11 @@ public class MyAppsActivity extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_my_apps, menu);
-        
+
         // Setup search functionality in toolbar
         MenuItem searchItem = menu.findItem(R.id.action_search);
         androidx.appcompat.widget.SearchView searchView = (androidx.appcompat.widget.SearchView) searchItem.getActionView();
-        
+
         if (searchView != null) {
             searchView.setQueryHint("Search apps...");
             searchView.setOnQueryTextListener(new androidx.appcompat.widget.SearchView.OnQueryTextListener() {
@@ -109,7 +109,7 @@ public class MyAppsActivity extends AppCompatActivity {
                 }
             });
         }
-        
+
         return true;
     }
 
@@ -154,7 +154,7 @@ public class MyAppsActivity extends AppCompatActivity {
                     } else {
                         Toast.makeText(MyAppsActivity.this, "✅ Saved " + selectedPackages.size() + " restricted apps!", Toast.LENGTH_SHORT).show();
                     }
-                    
+
                     // Auto-navigate back to MainActivity after successful save
                     finish();
                 })

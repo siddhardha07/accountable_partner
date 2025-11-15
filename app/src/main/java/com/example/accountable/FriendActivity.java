@@ -71,7 +71,7 @@ public class FriendActivity extends AppCompatActivity {
                             List<String> selectedPackages = (List<String>) document.get("selectedApps");
                             if (selectedPackages != null && !selectedPackages.isEmpty()) {
                                 restrictedAppsList.clear();
-                                
+
                                 // Convert package names to AppInfo objects for display
                                 PackageManager pm = getPackageManager();
                                 for (String packageName : selectedPackages) {
@@ -87,7 +87,7 @@ public class FriendActivity extends AppCompatActivity {
                                         restrictedAppsList.add(model);
                                     }
                                 }
-                                
+
                                 adapter.notifyDataSetChanged();
                                 Toast.makeText(this, "Loaded " + restrictedAppsList.size() + " restricted apps.", Toast.LENGTH_SHORT).show();
                             } else {
