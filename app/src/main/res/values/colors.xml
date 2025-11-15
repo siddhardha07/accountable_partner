@@ -1,51 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Logo-inspired Theme Colors -->
-    <!-- Primary Teal Colors (from logo) -->
-    <color name="primary_teal">#40E0D0</color>
-    <color name="primary_teal_light">#7FFFD4</color>
-    
-    <!-- Navy Blue Colors (from logo) -->
-    <color name="navy_blue_light">#3B82F6</color>
-    <color name="navy_blue_dark">#1E293B</color>
-    
-    <!-- Purple Colors (from logo gradient) -->
-    <color name="logo_purple">#8B5CF6</color>
-    
-    <!-- Gradient Colors for Special Elements -->
-    <color name="gradient_start">#40E0D0</color>
-    <color name="gradient_middle">#3B82F6</color>
-    <color name="gradient_end">#8B5CF6</color>
-    
-    <!-- Status Colors -->
-    <color name="success_blue">#3B82F6</color>
-    <color name="primary_blue_accent">#2563EB</color>
-    <color name="warning_orange">#F59E0B</color>
-    <color name="error_red">#EF4444</color>
-    
-    <!-- Surface and Background -->
+    <!-- Accountability Theme Colors -->
+    <color name="primary_blue">#2196F3</color>
+    <color name="primary_blue_dark">#1976D2</color>
+    <color name="primary_blue_light">#BBDEFB</color>
+
+    <color name="accent_green">#4CAF50</color>
+    <color name="accent_green_dark">#388E3C</color>
+    <color name="accent_green_light">#C8E6C9</color>
+
+    <color name="warning_orange">#FF9800</color>
+    <color name="error_red">#F44336</color>
+
     <color name="background_light">#FAFAFA</color>
     <color name="surface_white">#FFFFFF</color>
-    <color name="surface_card">#F8FAFC</color>
-    
-    <!-- Text Colors -->
-    <color name="text_primary">#1F2937</color>
-    <color name="text_secondary">#6B7280</color>
-    <color name="text_tertiary">#9CA3AF</color>
-    
-    <!-- Navigation Colors -->
-    <color name="nav_background">#FFFFFF</color>
-    <color name="nav_active">#3B82F6</color>
-    <color name="nav_inactive">#9CA3AF</color>
-
-    <!-- Additional Colors for UI Components -->
-    <color name="secondary_teal">#20B2AA</color>
-    <color name="accent_purple">#8B5CF6</color>
-    <color name="primary_navy">#1E3A8A</color>
-    <color name="primary_blue">#3B82F6</color>
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#757575</color>
 
     <!-- Legacy colors for compatibility -->
+    <color name="purple_200">#FFBB86FC</color>
     <color name="purple_500">#2196F3</color>
+    <color name="purple_700">#1976D2</color>
+    <color name="teal_200">#4CAF50</color>
+    <color name="teal_700">#388E3C</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>
