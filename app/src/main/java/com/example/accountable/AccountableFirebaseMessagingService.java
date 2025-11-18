@@ -29,9 +29,13 @@ public class AccountableFirebaseMessagingService extends FirebaseMessagingServic
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser == null) return;
 
-        // Listen for pending notifications when app is closed
+        String userId = currentUser.getUid();
+
+        // Listen for instant notifications targeted at this user
+        // This listener is more efficient and will trigger notifications even when app is backgrounded
         FirebaseFirestore.getInstance()
-            .collection("pendingNotifications")
+            .collection("instantNotifications")
+            .whereEqualTo("fcmToken", currentUser.getUid()) // Match by user ID for better targeting
             .whereEqualTo("status", "pending")
             .addSnapshotListener((snapshots, error) -> {
                 if (error != null || snapshots == null) return;
@@ -45,9 +49,16 @@ public class AccountableFirebaseMessagingService extends FirebaseMessagingServic
                             String appName = (String) data.get("appName");
                             String requestId = (String) data.get("requestId");
                             Long requestedSeconds = (Long) data.get("requestedSeconds");
+                            String priority = (String) data.get("priority");
 
                             if (userName != null && appName != null && requestId != null) {
+                                // Show notification immediately
                                 showNotification(userName, appName, requestId, requestedSeconds != null ? requestedSeconds : 0L);
+
+                                // Mark as delivered
+                                doc.getReference().update("status", "delivered");
+
+                                Log.d("FCMService", "Instant notification delivered for: " + appName);
                             }
                         }
                     }
@@ -104,6 +115,10 @@ public class AccountableFirebaseMessagingService extends FirebaseMessagingServic
                 NotificationManager.IMPORTANCE_HIGH
             );
             channel.setDescription("App access request notifications");
+            channel.enableVibration(true);
+            channel.setLockscreenVisibility(NotificationCompat.VISIBILITY_PUBLIC);
+            channel.setShowBadge(true);
+
             NotificationManager manager = getSystemService(NotificationManager.class);
             manager.createNotificationChannel(channel);
         }

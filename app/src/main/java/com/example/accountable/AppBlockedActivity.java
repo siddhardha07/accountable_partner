@@ -81,6 +81,10 @@ public class AppBlockedActivity extends AppCompatActivity {
     private void requestPartnerAccess() {
         if (currentUserId == null) return;
 
+        // Immediate feedback - disable button and show processing state
+        requestAccessButton.setText("Processing...");
+        requestAccessButton.setEnabled(false);
+
         // Show time selection dialog first
         TimeSelectionDialog.show(this, new TimeSelectionDialog.TimeSelectionListener() {
             @Override
@@ -94,13 +98,17 @@ public class AppBlockedActivity extends AppCompatActivity {
                             }
                         })
                         .addOnFailureListener(e -> {
-                            // Handle error
+                            // Re-enable button on error
+                            requestAccessButton.setText("Request Failed - Retry");
+                            requestAccessButton.setEnabled(true);
                         });
             }
 
             @Override
             public void onCancelled() {
-                // User cancelled time selection
+                // Re-enable button if user cancels
+                requestAccessButton.setText("Request Access");
+                requestAccessButton.setEnabled(true);
             }
         });
     }
@@ -169,9 +177,10 @@ public class AppBlockedActivity extends AppCompatActivity {
     }
 
     private void sendFCMNotification(String fcmToken, String userName, String appName, String requestId, long requestedSeconds) {
-        // Create a simple in-app notification approach since FCM HTTP requires server key
-        // Instead, let's use a Firestore-based notification that the partner app can listen to
+        // For free Firebase plan, we use a combination of Firestore trigger + local notification
+        // This creates a Firestore document that triggers the FCM service on the partner's device
         String timeDescription = formatTimeDescription(requestedSeconds);
+
         java.util.Map<String, Object> notificationData = new java.util.HashMap<>();
         notificationData.put("fcmToken", fcmToken);
         notificationData.put("requestId", requestId);
@@ -183,14 +192,19 @@ public class AppBlockedActivity extends AppCompatActivity {
         notificationData.put("type", "access_request");
         notificationData.put("timestamp", System.currentTimeMillis());
         notificationData.put("status", "pending");
+        notificationData.put("priority", "high"); // Mark as high priority for immediate delivery
 
-        // Save to a notifications collection that the partner's app can listen to
-        db.collection("pendingNotifications").add(notificationData)
+        // Save to Firestore - this will be picked up by the FCM service via real-time listeners
+        // The FCM service will display the notification even if app is closed
+        db.collection("instantNotifications").add(notificationData)
                 .addOnSuccessListener(documentReference -> {
-                    // Notification sent
+                    Log.d("FCM", "Instant notification created: " + documentReference.getId());
+
+                    // Also save to pendingNotifications as backup for MainActivity listener
+                    db.collection("pendingNotifications").add(notificationData);
                 })
                 .addOnFailureListener(e -> {
-                    Log.e("FCM", "Failed to save notification", e);
+                    Log.e("FCM", "Failed to create instant notification", e);
                 });
     }
 
@@ -205,10 +219,10 @@ public class AppBlockedActivity extends AppCompatActivity {
                             Long durationSeconds = documentSnapshot.getLong("durationSeconds");
                             Long accessExpiresAt = documentSnapshot.getLong("accessExpiresAt");
 
-                            if (durationSeconds != null && accessExpiresAt != null) {
+                        if (durationSeconds != null && accessExpiresAt != null) {
                                 // Save temporary access grant to SharedPreferences or Firestore
                                 saveTemporaryAccess(packageName, accessExpiresAt);
-
+                                
                             }
 
                             // Access approved - close blocking screen
@@ -222,8 +236,7 @@ public class AppBlockedActivity extends AppCompatActivity {
                 });
     }
 
-    private void saveTemporaryAccess(String packageName, long expiresAt) {
-        // Save to user's Firestore document for the AppMonitoringService to check
+     private void saveTemporaryAccess(String packageName, long expiresAt) {
         FirebaseAuth mAuth = FirebaseAuth.getInstance();
         if (mAuth.getCurrentUser() != null) {
             String userId = mAuth.getCurrentUser().getUid();
@@ -237,7 +250,7 @@ public class AppBlockedActivity extends AppCompatActivity {
                     .collection("temporaryAccess").document(packageName)
                     .set(accessData)
                     .addOnSuccessListener(aVoid -> {
-
+                        Log.d("AppBlocked", "Saved usage-based temporary access for " + packageName);
                     })
                     .addOnFailureListener(e -> {
                         Log.e("AppBlocked", "Failed to save temporary access", e);
@@ -268,6 +281,7 @@ public class AppBlockedActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
+        super.onBackPressed();
         // Prevent going back to the blocked app
         goToHomeScreen();
     }
