@@ -23,7 +23,7 @@ public class TimeSelectionDialog {
         // Configure minutes picker (0-120 minutes = 2 hours max)
         minutesPicker.setMinValue(0);
         minutesPicker.setMaxValue(120);
-        minutesPicker.setValue(15); // Default 15 minutes
+        minutesPicker.setValue(0); // Default 0 minutes - user starts from zero
         minutesPicker.setWrapSelectorWheel(false);
 
         // Configure seconds picker (0-59 seconds)

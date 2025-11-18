@@ -22,6 +22,37 @@ public class AccountableFirebaseMessagingService extends FirebaseMessagingServic
     public void onCreate() {
         super.onCreate();
         createNotificationChannel();
+        setupBackgroundListener();
+    }
+
+    private void setupBackgroundListener() {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null) return;
+
+        // Listen for pending notifications when app is closed
+        FirebaseFirestore.getInstance()
+            .collection("pendingNotifications")
+            .whereEqualTo("status", "pending")
+            .addSnapshotListener((snapshots, error) -> {
+                if (error != null || snapshots == null) return;
+
+                for (com.google.firebase.firestore.DocumentChange change : snapshots.getDocumentChanges()) {
+                    if (change.getType() == com.google.firebase.firestore.DocumentChange.Type.ADDED) {
+                        com.google.firebase.firestore.DocumentSnapshot doc = change.getDocument();
+                        java.util.Map<String, Object> data = doc.getData();
+                        if (data != null) {
+                            String userName = (String) data.get("userName");
+                            String appName = (String) data.get("appName");
+                            String requestId = (String) data.get("requestId");
+                            Long requestedSeconds = (Long) data.get("requestedSeconds");
+
+                            if (userName != null && appName != null && requestId != null) {
+                                showNotification(userName, appName, requestId, requestedSeconds != null ? requestedSeconds : 0L);
+                            }
+                        }
+                    }
+                }
+            });
     }
 
     @Override
