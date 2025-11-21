@@ -38,6 +38,7 @@ public class AppMonitoringService extends AccessibilityService {
     private final Map<String, Long> lastBlockTime = new ConcurrentHashMap<>();
     private Map<String, Long> remainingWallet = new ConcurrentHashMap<>();
     private Map<String, Long> lastWalletUpdate = new ConcurrentHashMap<>();
+    private Map<String, Long> walletSessionStartTime = new ConcurrentHashMap<>();
 
     private final Set<String> cachedBlockedApps = ConcurrentHashMap.newKeySet();
     private final Set<String> userSelectedApps = ConcurrentHashMap.newKeySet();
@@ -181,8 +182,19 @@ public class AppMonitoringService extends AccessibilityService {
                         Long remaining = documentSnapshot.getLong("remainingMillis");
                         if (remaining != null && remaining > 0) {
 
-                            remainingWallet.put(packageName, remaining);
-                            lastWalletUpdate.put(packageName, System.currentTimeMillis());
+                            // CRITICAL FIX: Only update wallet time if not currently being tracked
+                            if (!remainingWallet.containsKey(packageName)) {
+                                remainingWallet.put(packageName, remaining);
+                                lastWalletUpdate.put(packageName, System.currentTimeMillis());
+                                walletSessionStartTime.put(packageName, System.currentTimeMillis());
+                            } else {
+                                // Already tracking - only update if less time (security)
+                                long currentLocal = remainingWallet.getOrDefault(packageName, 0L);
+                                if (remaining < currentLocal) {
+                                    remainingWallet.put(packageName, remaining);
+                                }
+                                lastWalletUpdate.put(packageName, System.currentTimeMillis());
+                            }
 
                             lastBlockTime.remove(packageName);
                             cachedBlockedApps.remove(packageName);
@@ -213,8 +225,19 @@ public class AppMonitoringService extends AccessibilityService {
                         Long remaining = documentSnapshot.getLong("remainingMillis");
 
                         if (remaining != null && remaining > 0) {
-                            remainingWallet.put(packageName, remaining);
-                            lastWalletUpdate.put(packageName, System.currentTimeMillis());
+                            // CRITICAL FIX: Only update wallet time if not currently being tracked
+                            if (!remainingWallet.containsKey(packageName)) {
+                                remainingWallet.put(packageName, remaining);
+                                lastWalletUpdate.put(packageName, System.currentTimeMillis());
+                                walletSessionStartTime.put(packageName, System.currentTimeMillis());
+                            } else {
+                                // Already tracking - only update if less time (security)
+                                long currentLocal = remainingWallet.getOrDefault(packageName, 0L);
+                                if (remaining < currentLocal) {
+                                    remainingWallet.put(packageName, remaining);
+                                }
+                                lastWalletUpdate.put(packageName, System.currentTimeMillis());
+                            }
                             lastBlockTime.remove(packageName);
 
                             handler.post(() -> {
@@ -562,19 +585,25 @@ public class AppMonitoringService extends AccessibilityService {
         long currentUsage = totalUsageToday.getOrDefault(currentForegroundApp, 0L);
         long newTotal = currentUsage + sessionDuration;
         totalUsageToday.put(currentForegroundApp, newTotal);
-        currentAppStartTime = now;
+        // CRITICAL FIX: Don't reset currentAppStartTime - this was causing wallet deduction to only count 5-second intervals
+        // currentAppStartTime should only be reset when app switches, not during continuous usage tracking
 
         Log.d(TAG, currentForegroundApp + " session: +" + (sessionDuration / 1000) + "s, Total today: " + (newTotal / 60000) + "min");
 
         // Handle wallet deduction if active - ONLY for current foreground app
         if (remainingWallet.containsKey(currentForegroundApp)) {
-            long remaining = remainingWallet.getOrDefault(currentForegroundApp, 0L);
-            remaining -= sessionDuration;
+            // CRITICAL FIX: Use the 5-second interval (CHECK_INTERVAL) for deduction, not session time
+            // This ensures consistent 5-second deductions regardless of session start time manipulation
 
-            Log.d(TAG, "Wallet deduction: -" + (sessionDuration / 1000) + "s, remaining: " + (remaining / 1000) + "s for " + currentForegroundApp);
+            long remaining = remainingWallet.getOrDefault(currentForegroundApp, 0L);
+            remaining = Math.max(0, remaining - CHECK_INTERVAL);
+
+            // DO NOT reset walletSessionStartTime - keep it stable for the entire session
+            Log.d(TAG, "Wallet deduction: -" + (CHECK_INTERVAL / 1000) + "s, remaining: " + (remaining / 1000) + "s for " + currentForegroundApp);
 
             if (remaining <= 0) {
                 remainingWallet.remove(currentForegroundApp);
+                walletSessionStartTime.remove(currentForegroundApp);
 
                 Log.d(TAG, "Wallet time expired for " + currentForegroundApp + " - removing access");
 
@@ -592,14 +621,12 @@ public class AppMonitoringService extends AccessibilityService {
             } else {
                 remainingWallet.put(currentForegroundApp, remaining);
 
-                // Update Firestore with remaining time every 5 seconds to avoid too many writes
-                if (sessionDuration >= 5000) {
-                    if (currentUserId != null && db != null) {
-                        db.collection("users").document(currentUserId)
-                                .collection("temporaryAccess").document(currentForegroundApp)
-                                .update("remainingMillis", remaining)
-                                .addOnFailureListener(e -> Log.e(TAG, "Failed to update remaining time", e));
-                    }
+                // SECURITY FIX: Update Firestore immediately on every deduction to prevent time manipulation
+                if (currentUserId != null && db != null) {
+                    db.collection("users").document(currentUserId)
+                            .collection("temporaryAccess").document(currentForegroundApp)
+                            .update("remainingMillis", remaining)
+                            .addOnFailureListener(e -> Log.e(TAG, "Failed to update remaining time", e));
                 }
             }
         } else {
@@ -680,8 +707,21 @@ public class AppMonitoringService extends AccessibilityService {
                                 Long remaining = document.getLong("remainingMillis");
 
                                 if (remaining != null && remaining > 0) {
-                                    remainingWallet.put(packageName, remaining);
-                                    lastWalletUpdate.put(packageName, System.currentTimeMillis());
+                                    // CRITICAL FIX: Only update wallet time if not currently being tracked
+                                    // This prevents overwriting local deductions and fixes "more time than requested" bug
+                                    if (!remainingWallet.containsKey(packageName)) {
+                                        // New wallet access - set initial values
+                                        remainingWallet.put(packageName, remaining);
+                                        lastWalletUpdate.put(packageName, System.currentTimeMillis());
+                                        walletSessionStartTime.put(packageName, System.currentTimeMillis());
+                                    } else {
+                                        // Already tracking - only update if Firestore has LESS time (security)
+                                        long currentLocal = remainingWallet.getOrDefault(packageName, 0L);
+                                        if (remaining < currentLocal) {
+                                            remainingWallet.put(packageName, remaining);
+                                        }
+                                        lastWalletUpdate.put(packageName, System.currentTimeMillis());
+                                    }
 
                                     // Remove previous block state
                                     lastBlockTime.remove(packageName);
@@ -692,21 +732,24 @@ public class AppMonitoringService extends AccessibilityService {
                                         handler.removeCallbacks(blockEnforcer);
                                     }
 
+                                    long finalRemaining = remainingWallet.getOrDefault(packageName, remaining);
                                     Log.d(TAG,
-                                            "🔓 Temporary access (wallet) granted for "
+                                            "Temporary access (wallet) for "
                                             + packageName + " - remaining: "
-                                            + (remaining / 1000) + " seconds");
+                                            + (finalRemaining / 1000) + " seconds");
 
                                     handler.post(() -> {
                                         String appName = packageName.substring(packageName.lastIndexOf('.') + 1);
+                                        long displayRemaining = remainingWallet.getOrDefault(packageName, remaining);
                                         Toast.makeText(this,
-                                                "🔓 " + appName + " unlocked (" + (remaining / 60000) + " min)",
+                                                appName + " unlocked (" + (displayRemaining / 60000) + " min)",
                                                 Toast.LENGTH_SHORT).show();
                                     });
                                 } else {
                                     // No remaining time, clean up
                                     remainingWallet.remove(packageName);
                                     lastWalletUpdate.remove(packageName);
+                                    walletSessionStartTime.remove(packageName);
                                 }
                                 break;
                             }
@@ -714,6 +757,7 @@ public class AppMonitoringService extends AccessibilityService {
                             case REMOVED: {
                                 remainingWallet.remove(packageName);
                                 lastWalletUpdate.remove(packageName);
+                                walletSessionStartTime.remove(packageName);
 
                                 Log.d(TAG, "Temporary access revoked for " + packageName);
 
