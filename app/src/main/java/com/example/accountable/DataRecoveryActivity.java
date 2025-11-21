@@ -115,7 +115,9 @@ public class DataRecoveryActivity extends AppCompatActivity {
         recoveryStatus.setText("🔧 Fixing partnership issues...");
 
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (currentUser == null) return;
+        if (currentUser == null) {
+            return;
+        }
 
         // Create/update user document with all required fields
         Map<String, Object> updates = new HashMap<>();
@@ -138,13 +140,13 @@ public class DataRecoveryActivity extends AppCompatActivity {
         db.collection("users").document(currentUserId)
                 .update(updates)
                 .addOnSuccessListener(aVoid -> {
-                    recoveryStatus.setText("✅ Fixed user document! Your account should work properly now.\n\n" +
-                                         "Note: You may need to re-establish partnerships with your accountability partners.");
-                    Toast.makeText(this, "✅ Data recovery completed!", Toast.LENGTH_LONG).show();
+                    recoveryStatus.setText("✅ Fixed user document! Your account should work properly now.\n\n"
+                            + "Note: You may need to re-establish partnerships with your accountability partners.");
+                    Toast.makeText(this, "Data recovery completed!", Toast.LENGTH_LONG).show();
                 })
                 .addOnFailureListener(e -> {
-                    recoveryStatus.setText("❌ Fix failed: " + e.getMessage() +
-                                         "\n\nTry creating the document from scratch...");
+                    recoveryStatus.setText("❌ Fix failed: " + e.getMessage()
+                            + "\n\nTry creating the document from scratch...");
                     createUserDocumentFromScratch(currentUser);
                 });
     }
@@ -152,8 +154,8 @@ public class DataRecoveryActivity extends AppCompatActivity {
     private void createUserDocumentFromScratch(FirebaseUser user) {
         Map<String, Object> userProfile = new HashMap<>();
         userProfile.put("email", user.getEmail());
-        userProfile.put("displayName", user.getDisplayName() != null ? user.getDisplayName() :
-                       (user.getEmail() != null ? user.getEmail().split("@")[0] : "User"));
+        userProfile.put("displayName", user.getDisplayName() != null ? user.getDisplayName()
+                : (user.getEmail() != null ? user.getEmail().split("@")[0] : "User"));
         userProfile.put("createdAt", System.currentTimeMillis());
         userProfile.put("mainPartnerId", null);
         userProfile.put("partners", new java.util.ArrayList<String>());
@@ -162,7 +164,7 @@ public class DataRecoveryActivity extends AppCompatActivity {
                 .set(userProfile)
                 .addOnSuccessListener(aVoid -> {
                     recoveryStatus.setText("✅ Created new user document! Your account is now properly set up.");
-                    Toast.makeText(this, "✅ Account recovered successfully!", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, "Account recovered successfully!", Toast.LENGTH_LONG).show();
                 })
                 .addOnFailureListener(e -> {
                     recoveryStatus.setText("❌ Failed to create user document: " + e.getMessage());

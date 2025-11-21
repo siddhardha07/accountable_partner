@@ -79,7 +79,9 @@ public class AppBlockedActivity extends AppCompatActivity {
     }
 
     private void requestPartnerAccess() {
-        if (currentUserId == null) return;
+        if (currentUserId == null) {
+            return;
+        }
 
         // Immediate feedback - disable button and show processing state
         requestAccessButton.setText("Processing...");
@@ -115,7 +117,6 @@ public class AppBlockedActivity extends AppCompatActivity {
 
     private void sendAccessRequest(String partnerId, long requestedSeconds) {
 
-
         // Get user's name first
         db.collection("users").document(currentUserId)
                 .get()
@@ -128,13 +129,13 @@ public class AppBlockedActivity extends AppCompatActivity {
                     String timeDescription = formatTimeDescription(requestedSeconds);
 
                     AccessRequest accessRequest = new AccessRequest(
-                        currentUserId,
-                        finalUserName,
-                        packageName,
-                        finalAppName,
-                        "APP_ACCESS",
-                        requestedSeconds,
-                        "User requested " + timeDescription + " of access"
+                            currentUserId,
+                            finalUserName,
+                            packageName,
+                            finalAppName,
+                            "APP_ACCESS",
+                            requestedSeconds,
+                            "User requested " + timeDescription + " of access"
                     );
 
                     // Save AccessRequest to Firebase using the new structure
@@ -143,7 +144,7 @@ public class AppBlockedActivity extends AppCompatActivity {
                             .addOnSuccessListener(aVoid -> {
                                 // Send FCM notification to partner
                                 sendNotificationToPartner(partnerId, finalUserName, finalAppName,
-                                    accessRequest.getRequestId(), requestedSeconds);
+                                        accessRequest.getRequestId(), requestedSeconds);
 
                                 requestAccessButton.setText("Request Sent ✓ (" + timeDescription + ")");
                                 requestAccessButton.setEnabled(false);
@@ -219,10 +220,10 @@ public class AppBlockedActivity extends AppCompatActivity {
                             Long durationSeconds = documentSnapshot.getLong("durationSeconds");
                             Long accessExpiresAt = documentSnapshot.getLong("accessExpiresAt");
 
-                        if (durationSeconds != null && accessExpiresAt != null) {
+                            if (durationSeconds != null && accessExpiresAt != null) {
                                 // Save temporary access grant to SharedPreferences or Firestore
                                 saveTemporaryAccess(packageName, accessExpiresAt);
-                                
+
                             }
 
                             // Access approved - close blocking screen
@@ -236,24 +237,28 @@ public class AppBlockedActivity extends AppCompatActivity {
                 });
     }
 
-     private void saveTemporaryAccess(String packageName, long expiresAt) {
+    private void saveTemporaryAccess(String packageName, long expiresAt) {
         FirebaseAuth mAuth = FirebaseAuth.getInstance();
         if (mAuth.getCurrentUser() != null) {
             String userId = mAuth.getCurrentUser().getUid();
 
+            // Convert expiresAt to remainingMillis for wallet-based system
+            long currentTime = System.currentTimeMillis();
+            long remainingMillis = Math.max(0, expiresAt - currentTime);
+
             java.util.Map<String, Object> accessData = new java.util.HashMap<>();
+            accessData.put("remainingMillis", remainingMillis);
+            accessData.put("grantedAt", currentTime);
             accessData.put("packageName", packageName);
-            accessData.put("expiresAt", expiresAt);
-            accessData.put("grantedAt", System.currentTimeMillis());
 
             db.collection("users").document(userId)
                     .collection("temporaryAccess").document(packageName)
                     .set(accessData)
                     .addOnSuccessListener(aVoid -> {
-                        Log.d("AppBlocked", "Saved usage-based temporary access for " + packageName);
+                        Log.d("AppBlocked", "Saved wallet-based temporary access for " + packageName + " (" + (remainingMillis / 60000) + " min)");
                     })
                     .addOnFailureListener(e -> {
-                        Log.e("AppBlocked", "Failed to save temporary access", e);
+                        Log.e("AppBlocked", "❌ Failed to save temporary access", e);
                     });
         }
     }

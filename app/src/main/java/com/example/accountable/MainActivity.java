@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
+
     private static final String TAG = "MainActivity";
     private static final String NOTIFICATION_CHANNEL_ID = "access_requests";
     private static final int NOTIFICATION_PERMISSION_REQUEST_CODE = 1001;
@@ -115,8 +116,8 @@ public class MainActivity extends AppCompatActivity {
     private void createUserDocument(FirebaseUser user) {
         Map<String, Object> userProfile = new HashMap<>();
         userProfile.put("email", user.getEmail());
-        userProfile.put("displayName", user.getDisplayName() != null ? user.getDisplayName() :
-                       (user.getEmail() != null ? user.getEmail().split("@")[0] : "User"));
+        userProfile.put("displayName", user.getDisplayName() != null ? user.getDisplayName()
+                : (user.getEmail() != null ? user.getEmail().split("@")[0] : "User"));
         userProfile.put("createdAt", System.currentTimeMillis());
         userProfile.put("mainPartnerId", null);
         userProfile.put("partners", new java.util.ArrayList<String>());
@@ -157,24 +158,24 @@ public class MainActivity extends AppCompatActivity {
             if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
                     != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this,
-                    new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
-                    NOTIFICATION_PERMISSION_REQUEST_CODE);
+                        new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
+                        NOTIFICATION_PERMISSION_REQUEST_CODE);
             }
         }
     }
 
-        @Override
+    @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == NOTIFICATION_PERMISSION_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(this, "✅ Notification permission granted!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Notification permission granted!", Toast.LENGTH_SHORT).show();
                 // Request next permission after a short delay
                 new android.os.Handler().postDelayed(() -> {
                     requestOverlayPermission();
                 }, 1000);
             } else {
-                Toast.makeText(this, "❌ Notification permission denied. You won't receive access requests.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Notification permission denied. You won't receive access requests.", Toast.LENGTH_LONG).show();
             }
         }
     }
@@ -204,7 +205,9 @@ public class MainActivity extends AppCompatActivity {
 
     private void setupAccessRequestListener() {
         FirebaseUser currentUser = mAuth.getCurrentUser();
-        if (currentUser == null) return;
+        if (currentUser == null) {
+            return;
+        }
 
         String userId = currentUser.getUid();
 
@@ -315,9 +318,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // Simple permission requests - just like requestNotificationPermission()
-
     // Individual permission methods - call them separately as needed
-
     public void requestOverlayPermission() {
         waitingForOverlayPermission = true;
         Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION);

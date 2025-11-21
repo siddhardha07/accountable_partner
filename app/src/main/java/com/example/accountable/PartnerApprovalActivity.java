@@ -20,6 +20,7 @@ import java.util.Locale;
 import java.util.Map;
 
 public class PartnerApprovalActivity extends AppCompatActivity {
+
     private static final String TAG = "PartnerApproval";
 
     private FirebaseFirestore db;
@@ -62,7 +63,6 @@ public class PartnerApprovalActivity extends AppCompatActivity {
         userRequestedSeconds = getIntent().getLongExtra("requestedSeconds", 0);
 
         // Request received
-
         // Initialize views
         initializeViews();
         setupClickListeners();
@@ -102,18 +102,18 @@ public class PartnerApprovalActivity extends AppCompatActivity {
     private void loadRequestData() {
         if (requestId != null) {
             db.collection("requests").document(requestId)
-                .get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    if (documentSnapshot.exists()) {
-                        String requestType = documentSnapshot.getString("requestType");
-                        displayRequestInfo(requestType);
-                    } else {
+                    .get()
+                    .addOnSuccessListener(documentSnapshot -> {
+                        if (documentSnapshot.exists()) {
+                            String requestType = documentSnapshot.getString("requestType");
+                            displayRequestInfo(requestType);
+                        } else {
+                            displayRequestInfo(null);
+                        }
+                    })
+                    .addOnFailureListener(e -> {
                         displayRequestInfo(null);
-                    }
-                })
-                .addOnFailureListener(e -> {
-                    displayRequestInfo(null);
-                });
+                    });
         } else {
             displayRequestInfo(null);
         }
@@ -166,7 +166,6 @@ public class PartnerApprovalActivity extends AppCompatActivity {
         denyButton.setEnabled(false);
 
         // Processing approval
-
         // Use the user's requested duration (no AP time selection)
         long totalSeconds = userRequestedSeconds;
 
@@ -188,36 +187,45 @@ public class PartnerApprovalActivity extends AppCompatActivity {
                 .addOnSuccessListener(aVoid -> {
                     // Check if this is an unrestrict request or access request
                     db.collection("requests").document(requestId).get()
-                        .addOnSuccessListener(documentSnapshot -> {
-                            String requestType = documentSnapshot.getString("requestType");
-                            boolean isUnrestrictRequest = "UNRESTRICT_APP".equals(requestType);
+                            .addOnSuccessListener(documentSnapshot -> {
+                                String requestType = documentSnapshot.getString("requestType");
 
-                            // Request processed
+                                // Create wallet-based temporary access if approved and it's a regular access request
+                                if (approved && !"UNRESTRICT_APP".equals(requestType) && totalSeconds > 0) {
+                                    String userId = documentSnapshot.getString("userId");
+                                    String packageName = documentSnapshot.getString("packageName");
 
-                            String message;
-                            if (approved) {
-                                if (isUnrestrictRequest) {
-                                    message = String.format("✅ Approved removing %s from restrictions for %s", appName, requesterName);
-                                } else if (totalSeconds > 0) {
-                                    String timeDescription = formatTimeDescription(totalSeconds);
-                                    message = String.format("✅ Granted %s access to %s for %s", requesterName, appName, timeDescription);
-                                } else {
-                                    message = String.format("✅ Granted %s access to %s", requesterName, appName);
+                                    if (userId != null && packageName != null) {
+                                        createWalletBasedAccess(userId, packageName, totalSeconds * 1000L); // Convert to milliseconds
+                                    }
                                 }
-                            } else {
-                                if (isUnrestrictRequest) {
-                                    message = String.format("❌ Denied removing %s from restrictions for %s", appName, requesterName);
+                                boolean isUnrestrictRequest = "UNRESTRICT_APP".equals(requestType);
+
+                                // Request processed
+                                String message;
+                                if (approved) {
+                                    if (isUnrestrictRequest) {
+                                        message = String.format("Approved removing %s from restrictions for %s", appName, requesterName);
+                                    } else if (totalSeconds > 0) {
+                                        String timeDescription = formatTimeDescription(totalSeconds);
+                                        message = String.format("Granted %s access to %s for %s", requesterName, appName, timeDescription);
+                                    } else {
+                                        message = String.format("Granted %s access to %s", requesterName, appName);
+                                    }
                                 } else {
-                                    message = String.format("❌ Denied %s access to %s", requesterName, appName);
+                                    if (isUnrestrictRequest) {
+                                        message = String.format("Denied removing %s from restrictions for %s", appName, requesterName);
+                                    } else {
+                                        message = String.format("Denied %s access to %s", requesterName, appName);
+                                    }
                                 }
-                            }
 
-                            Toast.makeText(this, message, Toast.LENGTH_LONG).show();
-                            // Response sent
+                                Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+                                // Response sent
 
-                            // Close the activity
-                            finish();
-                        });
+                                // Close the activity
+                                finish();
+                            });
                 })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "Failed to update access request", e);
@@ -226,6 +234,25 @@ public class PartnerApprovalActivity extends AppCompatActivity {
                     // Re-enable buttons
                     allowButton.setEnabled(true);
                     denyButton.setEnabled(true);
+                });
+    }
+
+    private void createWalletBasedAccess(String userId, String packageName, long remainingMillis) {
+        Log.d(TAG, "Creating wallet-based access for " + packageName + " with " + remainingMillis + "ms remaining");
+
+        Map<String, Object> accessData = new HashMap<>();
+        accessData.put("remainingMillis", remainingMillis);
+        accessData.put("grantedAt", System.currentTimeMillis());
+        accessData.put("packageName", packageName);
+
+        db.collection("users").document(userId)
+                .collection("temporaryAccess").document(packageName)
+                .set(accessData)
+                .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "Wallet-based temporary access created for " + packageName);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Failed to create wallet-based temporary access for " + packageName, e);
                 });
     }
 
